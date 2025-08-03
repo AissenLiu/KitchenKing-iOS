@@ -28,6 +28,8 @@ struct ChefCardView: View {
     @State private var showCelebration = false
     // 是否正在执行动画的私有状态变量
     @State private var isAnimating = false
+    // 是否显示礼花效果的私有状态变量
+    @State private var showConfetti = false
     // 系统颜色方案的环境变量
     @Environment(\.colorScheme) private var colorScheme
     
@@ -41,6 +43,19 @@ struct ChefCardView: View {
             // 外部装饰元素
             externalElementsView
         }
+        // 礼花效果作为叠加层
+        .overlay(
+            // 礼花效果叠加在卡片上方
+            Group {
+                if showConfetti {
+                    ConfettiEffectView()
+                        .frame(width: 300, height: 300)
+                        .allowsHitTesting(false)
+                }
+            }
+            // 定位礼花效果在卡片中心偏上位置
+            .position(x: 150, y: 50)
+        )
         // 监听厨师状态变化
         .onChange(of: chef.status) { _, newStatus in
             // 处理状态变化
@@ -500,11 +515,19 @@ struct ChefCardView: View {
     private func triggerCelebration() {
         // 设置显示庆祝动画
         showCelebration = true
+        // 显示礼花效果
+        showConfetti = true
         
-        // 2秒后恢复（使用主队列异步执行）
+        // 2秒后恢复庆祝动画（使用主队列异步执行）
         DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
             // 隐藏庆祝动画
             showCelebration = false
+        }
+        
+        // 3秒后隐藏礼花效果（礼花动画持续时间更长）
+        DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) {
+            // 隐藏礼花效果
+            showConfetti = false
         }
     }
     
@@ -784,6 +807,28 @@ struct ChefCardView: View {
     ScrollView(.vertical, showsIndicators: false) {
         // 垂直堆叠视图，间距为20
         VStack(spacing: 20) {
+            // 礼花效果测试区域
+            VStack(spacing: 16) {
+                Text("礼花效果测试")
+                    .font(.system(size: 20, weight: .bold))
+                
+                ConfettiEffectView()
+                    .frame(width: 200, height: 100)
+                
+                Button("触发礼花效果") {
+                    // 重新创建礼花效果视图来触发动画
+                    let notification = Notification(name: .init("TriggerConfetti"))
+                    NotificationCenter.default.post(notification)
+                }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 8)
+                .background(Color.blue)
+                .foregroundColor(.white)
+                .cornerRadius(8)
+            }
+            .padding()
+            .background(Color.gray.opacity(0.1))
+            .cornerRadius(12)
             // 标题文本
             Text("ChefCardView 状态预览")
                 // 设置标题字体样式
