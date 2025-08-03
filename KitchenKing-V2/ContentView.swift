@@ -62,6 +62,9 @@ struct ContentView: View {
                 
                 // 创建滚动视图，用于支持内容滚动
                 ScrollView {
+                    // 根据应用状态动态调整间距，初始状态居中，开始后靠上
+                    Spacer(minLength: appState.hasStarted ? 0 : 150)
+                    
                     // 创建垂直堆栈视图，设置间距为 24
                     VStack(spacing: 24) {
                         // 显示头部标题视图
