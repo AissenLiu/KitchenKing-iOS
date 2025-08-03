@@ -9,30 +9,40 @@ import SwiftUI
 
 /// 像素风格的加载指示器
 struct PixelLoadingIndicator: View {
-    @State private var isAnimating = false
-    private let frames = ["⬜", "⬛", "⬜", "⬛"]
+    @State private var animationPhase = 0
+    private let dotCount = 4
+    private let animationDuration = 0.2
     
     var body: some View {
-        HStack(spacing: 2) {
-            ForEach(0..<frames.count, id: \.self) { index in
-                Text(frames[index])
-                    .font(.system(size: 8, weight: .bold))
-                    .foregroundColor(.black)
-                    .scaleEffect(isAnimating && index == getCurrentFrame() ? 1.2 : 1.0)
-                    .animation(
-                        Animation.easeInOut(duration: 0.3).repeatForever(autoreverses: true),
-                        value: isAnimating
+        HStack(spacing: 4) {
+            ForEach(0..<dotCount, id: \.self) { index in
+                Rectangle()
+                    .frame(width: 8, height: 8)
+                    .foregroundColor(
+                        index == animationPhase ? Color.white : 
+                        index == (animationPhase + 1) % dotCount ? Color.white.opacity(0.6) :
+                        index == (animationPhase + 2) % dotCount ? Color.white.opacity(0.3) :
+                        Color.white.opacity(0.1)
                     )
+                    .scaleEffect(
+                        index == animationPhase ? 1.3 :
+                        index == (animationPhase + 1) % dotCount ? 1.1 :
+                        1.0
+                    )
+                    .animation(
+                        Animation.easeInOut(duration: animationDuration / 4).delay(Double(index) * 0.05),
+                        value: animationPhase
+                    )
+                    .cornerRadius(1)
             }
         }
         .onAppear {
-            isAnimating = true
+            Timer.scheduledTimer(withTimeInterval: animationDuration, repeats: true) { _ in
+                withAnimation(.easeInOut(duration: animationDuration / 2)) {
+                    animationPhase = (animationPhase + 1) % dotCount
+                }
+            }
         }
-    }
-    
-    private func getCurrentFrame() -> Int {
-        let time = Date().timeIntervalSince1970
-        return Int(time * 2) % frames.count
     }
 }
 

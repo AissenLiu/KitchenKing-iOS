@@ -136,14 +136,12 @@ struct IngredientInputView: View {
                             }) {
                                 HStack {
                                     // 根据加载状态显示不同文本
-                                    Text(isLoading ? "厨师们正在制作中..." : "开始厨王争霸")
+                                    Text(isLoading ? "正在制作中" : "开始厨王争霸")
                                         // 设置字体样式：16 号粗体圆角字体
                                         .font(.system(size: 16, weight: .bold))
                                     // 如果正在加载，显示像素加载指示器
                                     if isLoading {
-                                        PixelLoadingIndicator()
-                                            // 放大 1.2 倍
-                                            .scaleEffect(1.2)
+                                        PixelLoadingIndicator().scaleEffect(0.8)
                                     }
                                 }
                                 // 设置文本颜色为白色
@@ -157,10 +155,6 @@ struct IngredientInputView: View {
                             }
                             // 根据输入验证和加载状态禁用按钮
                             .disabled(!isValidIngredients || isLoading)
-                            // 根据输入验证和加载状态设置透明度
-                            .opacity(isValidIngredients && !isLoading ? 1.0 : 0.6)
-                            
-                            
                         }
                     }
                     // 设置内边距 20 点

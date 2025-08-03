@@ -81,13 +81,12 @@ struct ChefCardView: View {
             }
             // 设置垂直内边距
             .padding(.vertical, verticalPadding)
-            // 在底部添加覆盖层
-            .overlay(alignment: .bottom) {
-                // 如果厨师已完成且有菜品，显示菜品信息条
-                if chef.status == .completed, let dish = chef.dish {
-                    dishInfoBar(dish: dish)
-                }
+            
+            // 如果厨师已完成且有菜品，显示菜品信息条
+            if chef.status == .completed, let dish = chef.dish {
+                dishInfoBar(dish: dish)
             }
+            
         }
         // 设置内边距
         .padding(paddingValues)
@@ -171,7 +170,7 @@ struct ChefCardView: View {
                 .frame(width: statusBadgeSize, height: statusBadgeSize)
                 // 添加白色边框覆盖层
                 .overlay(
-                    RoundedRectangle(cornerRadius: 4)
+                    Rectangle()
                         // 描边白色边框
                         .stroke(.white, lineWidth: statusBadgeBorderWidth)
                 )
@@ -242,11 +241,19 @@ struct ChefCardView: View {
     private var statusOrDishSection: some View {
         // 分组视图
         Group {
-            // 如果厨师已完成且有菜品，显示菜品信息
-            if chef.status == .completed, let dish = chef.dish {
-                dishInfoSection(dish: dish)
-            } else {
-                // 否则显示状态信息
+            // 根据厨师状态显示不同内容
+            switch chef.status {
+            case .cooking:
+                // 制作中：显示cookingSteps
+                cookingStepsSection
+            case .completed:
+                // 已完成：显示completedMessages
+                completedMessageSection
+            case .error:
+                // 失败：显示errorMessages
+                errorMessageSection
+            case .idle:
+                // 待命中：显示状态信息
                 statusSection
             }
         }
@@ -304,17 +311,10 @@ struct ChefCardView: View {
             Text(currentStatusText)
                 // 设置字体样式
                 .font(.system(size: statusFontSize, weight: .semibold))
-                // 设置文本颜色为状态颜色
-                .foregroundColor(statusColor)
+                // 设置文本颜色为灰色
+                .foregroundColor(.secondary)
                 // 限制显示行数为1行
                 .lineLimit(1)
-            
-            // 如果正在烹饪，显示加载指示器
-            if chef.status == .cooking {
-                PixelLoadingIndicator()
-                    // 设置加载指示器缩放比例
-                    .scaleEffect(loadingIndicatorScale)
-            }
         }
     }
     
@@ -334,17 +334,38 @@ struct ChefCardView: View {
             .fixedSize(horizontal: false, vertical: true)
     }
     
+    // 制作中步骤区域的计算属性
+    private var cookingStepsSection: some View {
+        // 垂直堆叠视图，左对齐，指定间距
+        VStack(alignment: .leading, spacing: statusSectionSpacing) {
+            // 状态文本
+            statusText
+        }
+    }
+    
+    // 完成消息区域的计算属性
+    private var completedMessageSection: some View {
+        // 垂直堆叠视图，左对齐，指定间距
+        VStack(alignment: .leading, spacing: statusSectionSpacing) {
+            // 状态文本
+            statusText
+        }
+    }
+    
+    // 错误消息区域的计算属性
+    private var errorMessageSection: some View {
+        // 垂直堆叠视图，左对齐，指定间距
+        VStack(alignment: .leading, spacing: statusSectionSpacing) {
+            // 状态文本
+            statusText
+            
+        }
+    }
+    
     // 菜品信息条的函数
     private func dishInfoBar(dish: Dish) -> some View {
         // 水平堆叠视图，指定间距
         HStack(spacing: dishBarSpacing) {
-            // 刀叉图标
-            Image(systemName: "fork.knife")
-                // 设置图标字体大小
-                .font(.system(size: dishBarIconSize))
-                // 设置图标颜色为次要颜色
-                .foregroundColor(.secondary)
-            
             // 菜品名称文本
             Text(dish.dishName)
                 // 设置字体样式
@@ -358,20 +379,9 @@ struct ChefCardView: View {
                     // 调用菜品点击回调
                     onDishClick(dish)
                 }
-            
-            // 弹性空间填充器
-            Spacer()
         }
         // 设置水平内边距
         .padding(.horizontal, dishBarHorizontalPadding)
-        // 设置垂直内边距
-        .padding(.vertical, dishBarVerticalPadding)
-        // 设置背景色
-        .background(
-            RoundedRectangle(cornerRadius: dishBarCornerRadius)
-                // 填充菜品信息条背景颜色
-                .fill(dishBarBackgroundColor)
-        )
     }
     
     // MARK: - 外部装饰元素
@@ -499,16 +509,6 @@ struct ChefCardView: View {
     }
     
     // MARK: - 计算属性
-    // 状态颜色的计算属性
-    private var statusColor: Color {
-        // 根据厨师状态返回对应的颜色
-        switch chef.status {
-        case .idle: return .secondary    // 待命状态：次要颜色
-        case .cooking: return .orange    // 烹饪状态：橙色
-        case .completed: return .green   // 完成状态：绿色
-        case .error: return .red        // 错误状态：红色
-        }
-    }
     
     // 状态徽章颜色的计算属性
     private var statusBadgeColor: Color {
@@ -675,7 +675,7 @@ struct ChefCardView: View {
     
     // MARK: - 状态徽章尺寸
     // 状态徽章尺寸的计算属性
-    private var statusBadgeSize: CGFloat { responsiveSize(20) }
+    private var statusBadgeSize: CGFloat { responsiveSize(15) }
     // 状态徽章边框宽度的计算属性
     private var statusBadgeBorderWidth: CGFloat { responsiveSize(1.5) }
     // 状态徽章图标尺寸的计算属性
@@ -701,7 +701,7 @@ struct ChefCardView: View {
     // 菜品信息条图标尺寸的计算属性
     private var dishBarIconSize: CGFloat { responsiveSize(11) }
     // 菜品信息条字体尺寸的计算属性
-    private var dishBarFontSize: CGFloat { responsiveSize(13) }
+    private var dishBarFontSize: CGFloat { responsiveSize(15) }
     // 菜系标签字体尺寸的计算属性
     private var cuisineTagFontSize: CGFloat { responsiveSize(10) }
     
@@ -756,7 +756,7 @@ struct ChefCardView: View {
             return "待命中..."    // 待命状态文本
         case .cooking:
             // 烹饪状态文本，如果有当前步骤则显示步骤，否则显示默认文本
-            return currentStep.isEmpty ? "正在努力炒菜中..." : currentStep
+            return appState.getRandomCookingStep()
         case .completed:
             // 完成状态文本，从应用状态获取对应菜系的完成消息
             return appState.getChefCompletedMessage(cuisine: chef.cuisine)
@@ -834,7 +834,6 @@ struct ChefCardView: View {
                         imageName: "川菜",        // 头像图片名称
                         color: "text-red-600",    // 主题颜色
                         status: .cooking,         // 状态为烹饪中
-                        cookingStep: "正在热锅..." // 当前烹饪步骤
                     ),
                     completionOrder: -1,          // 完成排名（-1表示未完成）
                     appState: AppState(),         // 应用状态实例
@@ -1020,8 +1019,8 @@ struct ChefCardView: View {
                     // 创建错误状态的厨师实例
                     chef: Chef(
                         name: "新手厨师小王",      // 厨师姓名
-                        cuisine: "创新菜",        // 菜系
-                        imageName: "头像",        // 头像图片名称
+                        cuisine: "湘菜",        // 菜系
+                        imageName: "湘菜",        // 头像图片名称
                         color: "text-red-600",    // 主题颜色
                         status: .error,           // 状态为错误
                         cookingStep: "太难了，做不出来！" // 错误步骤描述

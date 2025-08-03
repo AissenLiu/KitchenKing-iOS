@@ -21,7 +21,7 @@ struct ContentView: View {
     
     // 预览模式标记，用于在 Xcode 预览中显示示例数据
     #if DEBUG
-    private let isPreviewMode = true
+    private let isPreviewMode = false
     #else
     private let isPreviewMode = false
     #endif
@@ -84,16 +84,18 @@ struct ContentView: View {
                         .padding(.top,100)
                         
                         // 创建厨师网格展示视图
-                        ChefGridView(
-                            // 传递应用状态对象
-                            appState: appState,
-                            // 设置菜品点击回调
-                            onDishClick: handleDishClick,
-                            // 设置重置按钮回调
-                            onReset: handleReset
-                        )
-                        // 添加顶部内边距 100
-                        .padding(.top,100)
+                        if appState.hasStarted {
+                            ChefGridView(
+                                // 传递应用状态对象
+                                appState: appState,
+                                // 设置菜品点击回调
+                                onDishClick: handleDishClick,
+                                // 设置重置按钮回调
+                                onReset: handleReset
+                            )
+                            // 添加顶部内边距 100
+                            .padding(.top,100)
+                        }
                         
                         // 创建弹性空间，最小高度为 50
                         Spacer(minLength: 50)
@@ -139,6 +141,9 @@ struct ContentView: View {
         // 检查食材输入是否为空，如果为空则直接返回
         guard !ingredients.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
         
+        // 设置已开始状态
+        appState.hasStarted = true
+        
         // 创建异步任务执行 API 调用
         Task {
             // 调用所有厨师的 API 服务
@@ -167,6 +172,8 @@ struct ContentView: View {
         appState.reset()
         // 清空食材输入
         ingredients = ""
+        // 设置已开始状态
+        appState.hasStarted = false
     }
     
     // 处理随机食材生成

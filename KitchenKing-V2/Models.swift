@@ -118,6 +118,7 @@ class AppState: ObservableObject {
     @Published var selectedDish: Dish?
     @Published var isModalOpen = false
     @Published var apiKey = "sk-26801bf0212a4cbeb0dc4ecc14e5e7b5"
+    @Published var hasStarted = false
     
     // 所有支持的菜系
     let cuisines: [Cuisine] = [
@@ -281,6 +282,7 @@ class AppState: ObservableObject {
         isLoading = false
         selectedDish = nil
         isModalOpen = false
+        hasStarted = false
     }
     
     // 获取随机错误消息
