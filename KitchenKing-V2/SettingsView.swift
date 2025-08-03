@@ -278,13 +278,13 @@ struct SubscriptionOptionView: View {
                             .fontWeight(.semibold)
                         
                         if let firstMonthPrice = type.firstMonthPrice {
-                            Text("首月¥\(firstMonthPrice)")
+                            Text("首月¥\(String(format: "%.2f", firstMonthPrice))")
                                 .font(.caption)
                                 .foregroundColor(.red)
                         }
                     }
                     
-                    Text("¥\(type.price)")
+                    Text("¥\(String(format: "%.2f", type.price))")
                         .font(.title2)
                         .fontWeight(.bold)
                         .foregroundColor(.blue)

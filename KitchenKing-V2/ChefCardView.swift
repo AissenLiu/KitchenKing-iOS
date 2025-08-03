@@ -20,8 +20,14 @@ struct ChefCardView: View {
     let completionOrder: Int
     // 应用状态观察对象
     @ObservedObject var appState: AppState
+    // 卡片在数组中的索引
+    let cardIndex: Int
     // 菜品点击回调函数
     let onDishClick: (Dish) -> Void
+    // 卡片点击回调函数
+    let onCardClick: (() -> Void)?
+    // 是否选中的绑定状态变量
+    @Binding var isSelected: Bool
     // 当前烹饪步骤的私有状态变量
     @State private var currentStep = ""
     // 是否显示庆祝动画的私有状态变量
@@ -30,6 +36,8 @@ struct ChefCardView: View {
     @State private var isAnimating = false
     // 是否显示礼花效果的私有状态变量
     @State private var showConfetti = false
+    // 卡片显示动画的私有状态变量
+    @State private var isCardVisible = false
     // 系统颜色方案的环境变量
     @Environment(\.colorScheme) private var colorScheme
     
@@ -67,6 +75,13 @@ struct ChefCardView: View {
             if chef.status == .cooking {
                 isAnimating = true
             }
+            
+            // 检查卡片是否应该可见（基于 visibleCardCount）
+            updateCardVisibility()
+        }
+        // 监听 visibleCardCount 变化
+        .onChange(of: appState.visibleCardCount) { _, _ in
+            updateCardVisibility()
         }
     }
     
@@ -109,10 +124,34 @@ struct ChefCardView: View {
         .padding(.vertical, responsiveSize(8))
         // 设置卡片背景样式
         .background(cardStyle)
+        // 设置选中状态的缩放效果
+        .scaleEffect(isSelected ? 1.02 : 1.0)
+        // 设置选中状态的阴影效果
+        .shadow(color: isSelected ? selectedShadowColor : cardShadowColor, 
+                radius: isSelected ? cardShadowRadius * 1.5 : cardShadowRadius, 
+                x: isSelected ? cardShadowX : cardShadowX, 
+                y: isSelected ? cardShadowY * 1.5 : cardShadowY)
+        // 设置卡片显示动画效果
+        .scaleEffect(isCardVisible ? 1.0 : 0.8)
+        .opacity(isCardVisible ? 1.0 : 0.0)
+        .offset(y: isCardVisible ? 0 : 20)
+        // 添加点击手势
+        .onTapGesture {
+            // 设置选中状态为true
+            withAnimation(.easeInOut(duration: 0.2)) {
+                isSelected = true
+            }
+            // 如果有卡片点击回调，执行回调
+            onCardClick?()
+        }
         // 设置庆祝动画的缩放效果
         .scaleEffect(celebrationScale)
         // 添加弹簧动画效果
         .animation(.spring(response: 0.6, dampingFraction: 0.8), value: showCelebration)
+        // 添加选中状态动画
+        .animation(.easeInOut(duration: 0.2), value: isSelected)
+        // 添加卡片显示动画
+        .animation(.spring(response: 1, dampingFraction: 0.8, blendDuration: 0), value: isCardVisible)
     }
     
     // MARK: - 卡片样式
@@ -125,8 +164,8 @@ struct ChefCardView: View {
             // 添加覆盖层边框
             .overlay(
                 Rectangle()
-                    // 描边黑色边框
-                    .stroke(.black, lineWidth: 1)
+                    // 描边边框，选中时使用蓝色边框
+                    .stroke(isSelected ? selectedBorderColor : .black, lineWidth: isSelected ? 2 : 1)
             )
             // 添加阴影效果
             .shadow(color: cardShadowColor, radius: cardShadowRadius, x: cardShadowX, y: cardShadowY)
@@ -595,8 +634,20 @@ struct ChefCardView: View {
     
     // 卡片阴影颜色的计算属性
     private var cardShadowColor: Color {
-        // 返回黑色半透明阴影
-        .black.opacity(0.1)
+        // 返回更柔和的黑色半透明阴影
+        .black.opacity(0.15)
+    }
+    
+    // 选中状态阴影颜色的计算属性
+    private var selectedShadowColor: Color {
+        // 返回选中状态的蓝色阴影
+        .black.opacity(0.3)
+    }
+    
+    // 选中状态边框颜色的计算属性
+    private var selectedBorderColor: Color {
+        // 返回选中状态的蓝色边框
+        .black
     }
     
     // 菜品信息条背景颜色的计算属性
@@ -746,11 +797,11 @@ struct ChefCardView: View {
     
     // MARK: - 阴影
     // 卡片阴影半径的计算属性
-    private var cardShadowRadius: CGFloat { responsiveSize(4) }
+    private var cardShadowRadius: CGFloat { responsiveSize(8) }
     // 卡片阴影X偏移的计算属性
     private var cardShadowX: CGFloat { responsiveSize(0) }
     // 卡片阴影Y偏移的计算属性
-    private var cardShadowY: CGFloat { responsiveSize(2) }
+    private var cardShadowY: CGFloat { responsiveSize(4) }
     
     // MARK: - 奖牌尺寸
     // 奖牌表情符号字体尺寸的计算属性
@@ -789,6 +840,21 @@ struct ChefCardView: View {
         }
     }
     
+    // 更新卡片可见性的函数
+    private func updateCardVisibility() {
+        // 找到这个厨师在原始数组中的索引
+        let originalIndex = appState.chefs.firstIndex(where: { $0.id == chef.id }) ?? cardIndex
+        
+        // 如果当前卡片的索引小于 visibleCardCount，则显示卡片
+        let shouldBeVisible = originalIndex < appState.visibleCardCount
+        
+        if shouldBeVisible != isCardVisible {
+            withAnimation(.spring(response: 0.6, dampingFraction: 0.8, blendDuration: 0)) {
+                isCardVisible = shouldBeVisible
+            }
+        }
+    }
+    
     // 开始烹饪动画的函数
     private func startCookingAnimation() {
         // 如果厨师正在烹饪状态
@@ -802,9 +868,35 @@ struct ChefCardView: View {
     }
 }
 
+// 便利初始化方法，提供默认值
+extension ChefCardView {
+    // 便利初始化方法，不提供卡片点击回调
+    init(chef: Chef, completionOrder: Int, appState: AppState, cardIndex: Int, onDishClick: @escaping (Dish) -> Void, isSelected: Binding<Bool>) {
+        self.chef = chef
+        self.completionOrder = completionOrder
+        self.appState = appState
+        self.cardIndex = cardIndex
+        self.onDishClick = onDishClick
+        self.onCardClick = nil
+        self._isSelected = isSelected
+    }
+    
+    // 完整初始化方法，包含卡片点击回调
+    init(chef: Chef, completionOrder: Int, appState: AppState, cardIndex: Int, onDishClick: @escaping (Dish) -> Void, onCardClick: @escaping () -> Void, isSelected: Binding<Bool>) {
+        self.chef = chef
+        self.completionOrder = completionOrder
+        self.appState = appState
+        self.cardIndex = cardIndex
+        self.onDishClick = onDishClick
+        self.onCardClick = onCardClick
+        self._isSelected = isSelected
+    }
+}
+
 #Preview {
     // 预览视图
-    ScrollView(.vertical, showsIndicators: false) {
+    @Previewable @State var selectedCardId: String? = nil
+    return ScrollView(.vertical, showsIndicators: false) {
         // 垂直堆叠视图，间距为20
         VStack(spacing: 20) {
             // 礼花效果测试区域
@@ -836,6 +928,40 @@ struct ChefCardView: View {
                 // 设置顶部内边距
                 .padding(.top, 20)
             
+            // 选中状态预览
+            VStack(alignment: .leading, spacing: 8) {
+                // 状态标签
+                Text("选中状态示例")
+                    // 设置标签字体样式
+                    .font(.system(size: 16, weight: .semibold))
+                    // 设置标签颜色为次要颜色
+                    .foregroundColor(.secondary)
+                
+                // 选中状态的厨师卡片实例
+                ChefCardView(
+                    // 创建选中状态的厨师实例
+                    chef: Chef(
+                        name: "意大利菜马可",      // 厨师姓名
+                        cuisine: "意大利菜",      // 菜系
+                        imageName: "意大利菜",      // 头像图片名称
+                        color: "text-red-600",    // 主题颜色
+                        status: .cooking,         // 状态为烹饪中
+                        cookingStep: "正在制作意大利面..." // 烹饪步骤
+                    ),
+                    completionOrder: -1,          // 完成排名（-1表示未完成）
+                    appState: AppState(),         // 应用状态实例
+                    cardIndex: 0,                 // 卡片索引
+                    onDishClick: { _ in },         // 空的菜品点击回调
+                    onCardClick: { 
+                        print("选中状态卡片被点击")
+                    },
+                    isSelected: Binding(
+                        get: { selectedCardId == "italian" },
+                        set: { if $0 { selectedCardId = "italian" } else { selectedCardId = nil } }
+                    )
+                )
+            }
+            
             // Idle 状态预览
             VStack(alignment: .leading, spacing: 8) {
                 // 状态标签
@@ -857,7 +983,15 @@ struct ChefCardView: View {
                     ),
                     completionOrder: -1,          // 完成排名（-1表示未完成）
                     appState: AppState(),         // 应用状态实例
-                    onDishClick: { _ in }          // 空的菜品点击回调
+                    cardIndex: 1,                 // 卡片索引
+                    onDishClick: { _ in },         // 空的菜品点击回调
+                    onCardClick: { 
+                        print("待命状态卡片被点击")
+                    },
+                    isSelected: Binding(
+                        get: { selectedCardId == "hunan" },
+                        set: { if $0 { selectedCardId = "hunan" } else { selectedCardId = nil } }
+                    )
                 )
             }
             
@@ -882,7 +1016,13 @@ struct ChefCardView: View {
                     ),
                     completionOrder: -1,          // 完成排名（-1表示未完成）
                     appState: AppState(),         // 应用状态实例
-                    onDishClick: { _ in }          // 空的菜品点击回调
+                    cardIndex: 2,                 // 卡片索引
+                    onDishClick: { _ in },          // 空的菜品点击回调
+                    onCardClick: nil,
+                    isSelected: Binding(
+                        get: { selectedCardId == "sichuan" },
+                        set: { if $0 { selectedCardId = "sichuan" } else { selectedCardId = nil } }
+                    )
                 )
             }
             
@@ -923,7 +1063,13 @@ struct ChefCardView: View {
                     ),
                     completionOrder: 0,               // 完成排名（第一名）
                     appState: AppState(),            // 应用状态实例
-                    onDishClick: { _ in }             // 空的菜品点击回调
+                    cardIndex: 3,                    // 卡片索引
+                    onDishClick: { _ in },             // 空的菜品点击回调
+                    onCardClick: nil,
+                    isSelected: Binding(
+                        get: { selectedCardId == "cantonese" },
+                        set: { if $0 { selectedCardId = "cantonese" } else { selectedCardId = nil } }
+                    )
                 )
             }
             
@@ -964,7 +1110,13 @@ struct ChefCardView: View {
                     ),
                     completionOrder: 1,               // 完成排名（第二名）
                     appState: AppState(),            // 应用状态实例
-                    onDishClick: { _ in }             // 空的菜品点击回调
+                    cardIndex: 4,                    // 卡片索引
+                    onDishClick: { _ in },             // 空的菜品点击回调
+                    onCardClick: nil,
+                    isSelected: Binding(
+                        get: { selectedCardId == "french" },
+                        set: { if $0 { selectedCardId = "french" } else { selectedCardId = nil } }
+                    )
                 )
             }
             
@@ -1005,7 +1157,13 @@ struct ChefCardView: View {
                     ),
                     completionOrder: 2,               // 完成排名（第三名）
                     appState: AppState(),            // 应用状态实例
-                    onDishClick: { _ in }             // 空的菜品点击回调
+                    cardIndex: 5,                    // 卡片索引
+                    onDishClick: { _ in },             // 空的菜品点击回调
+                    onCardClick: nil,
+                    isSelected: Binding(
+                        get: { selectedCardId == "thai" },
+                        set: { if $0 { selectedCardId = "thai" } else { selectedCardId = nil } }
+                    )
                 )
             }
             
@@ -1046,7 +1204,13 @@ struct ChefCardView: View {
                     ),
                     completionOrder: 3,               // 完成排名（第四名）
                     appState: AppState(),            // 应用状态实例
-                    onDishClick: { _ in }             // 空的菜品点击回调
+                    cardIndex: 6,                    // 卡片索引
+                    onDishClick: { _ in },             // 空的菜品点击回调
+                    onCardClick: nil,
+                    isSelected: Binding(
+                        get: { selectedCardId == "russian" },
+                        set: { if $0 { selectedCardId = "russian" } else { selectedCardId = nil } }
+                    )
                 )
             }
             
@@ -1072,7 +1236,13 @@ struct ChefCardView: View {
                     ),
                     completionOrder: -1,          // 完成排名（-1表示未完成）
                     appState: AppState(),         // 应用状态实例
-                    onDishClick: { _ in }          // 空的菜品点击回调
+                    cardIndex: 7,                 // 卡片索引
+                    onDishClick: { _ in },          // 空的菜品点击回调
+                    onCardClick: nil,
+                    isSelected: Binding(
+                        get: { selectedCardId == "error" },
+                        set: { if $0 { selectedCardId = "error" } else { selectedCardId = nil } }
+                    )
                 )
             }
             

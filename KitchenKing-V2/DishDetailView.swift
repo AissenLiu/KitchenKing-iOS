@@ -73,12 +73,11 @@ struct DishDetailView: View {
         }
         .background(Color.clear)
         .clipShape(Rectangle())
-        .padding(contentPadding)
         .scaleEffect(showContent ? 1.0 : 0.8)
         .opacity(showContent ? 1.0 : 0.0)
         .animation(.spring(response: 0.6, dampingFraction: 0.8), value: showContent)
-        .padding(.top,30)
         .padding(.bottom,30)
+        .padding(.top,30)
         
     }
     
@@ -147,7 +146,7 @@ struct DishDetailView: View {
             flavorSection
             
             // 免责声明
-            if let disclaimer = dish.disclaimer {
+            if let disclaimer = dish.disclaimer, !disclaimer.isEmpty {
                 disclaimerSection(disclaimer)
             }
         }

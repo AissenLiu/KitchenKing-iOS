@@ -45,9 +45,7 @@ struct ContentView: View {
             ScrollView {
                 Color.white
                     .ignoresSafeArea()
-                
-                
-                
+
                 VStack(spacing: 24) {
                     HStack {
                         Spacer()
@@ -162,6 +160,10 @@ struct ContentView: View {
             self.appState.showSubscriptionSheet = true
             return
         }
+        
+        // 重置动画状态，准备开始新的动画
+        self.appState.isAnimatingCards = false
+        self.appState.visibleCardCount = 0
         
         self.appState.hasStarted = true
         self.appState.useGeneration()

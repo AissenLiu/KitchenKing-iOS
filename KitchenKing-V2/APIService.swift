@@ -201,6 +201,12 @@ class APIService: ObservableObject {
             appState.audioManager.playBackgroundMusic()
         }
         
+        // 启动卡片显示动画（只设置状态，让 ChefGridView 控制动画）
+        DispatchQueue.main.async {
+            appState.isAnimatingCards = true
+            appState.visibleCardCount = 0
+        }
+        
         let tasks = appState.cuisines.map { cuisine in
             Task {
                 let result = await callChef(ingredients: ingredients, cuisine: cuisine.name, apiKey: apiKey)

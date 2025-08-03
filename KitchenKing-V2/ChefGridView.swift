@@ -16,6 +16,10 @@ struct ChefGridView: View {
     let onDishClick: (Dish) -> Void
     // 重置按钮回调函数，无参数无返回值
     let onReset: () -> Void
+    // 当前选中的厨师ID状态
+    @State private var selectedChefId: UUID? = nil
+    // 上次滚动的厨师ID，避免重复滚动
+    @State private var lastScrolledChefId: UUID? = nil
     
     // 视图主体内容
     var body: some View {
@@ -103,18 +107,92 @@ struct ChefGridView: View {
             let sortedChefs = getSortedChefs()
             
             // 懒加载垂直堆栈，间距为 16 点，优化性能
-            LazyVStack(spacing: 16) {
-                // 遍历排序后的厨师数组
-                ForEach(sortedChefs) { chef in
-                    // 厨师卡片视图
-                    ChefCardView(
-                        chef: chef, // 传入厨师对象
-                        completionOrder: appState.completionOrder.firstIndex(of: chef.cuisine) ?? -1, // 获取完成顺序索引
-                        appState: appState, // 传入应用状态
-                        onDishClick: onDishClick // 传入菜品点击回调
-                    )
-                    .frame(maxWidth: .infinity) // 设置最大宽度为无限大
+            ScrollViewReader { proxy in
+                LazyVStack(spacing: 16) {
+                    // 遍历排序后的厨师数组
+                    ForEach(Array(sortedChefs.enumerated()), id: \.element.id) { index, chef in
+                        // 厨师卡片视图
+                        ChefCardView(
+                            chef: chef, // 传入厨师对象
+                            completionOrder: appState.completionOrder.firstIndex(of: chef.cuisine) ?? -1, // 获取完成顺序索引
+                            appState: appState, // 传入应用状态
+                            cardIndex: index, // 传入卡片索引
+                            onDishClick: onDishClick, // 传入菜品点击回调
+                            isSelected: Binding(
+                                get: { selectedChefId == chef.id },
+                                set: { if $0 { selectedChefId = chef.id } else { selectedChefId = nil } }
+                            )
+                        )
+                        .frame(maxWidth: .infinity) // 设置最大宽度为无限大
+                        .id(chef.id) // 为每个卡片设置唯一标识符
+                    }
                 }
+                        .onChange(of: appState.visibleCardCount) { _, newCount in
+                    // 当新卡片出现时，滚动到最新可见的卡片
+                    if newCount > 0 && newCount <= sortedChefs.count {
+                        let latestChef = sortedChefs[newCount - 1]
+                        // 避免重复滚动到同一个卡片
+                        if lastScrolledChefId != latestChef.id {
+                            withAnimation(.easeInOut(duration: 0.5)) {
+                                proxy.scrollTo(latestChef.id, anchor: .center)
+                            }
+                            lastScrolledChefId = latestChef.id
+                        }
+                    }
+                }
+                .onChange(of: appState.completionOrder) { _, _ in
+                    // 当完成顺序变化时，滚动到最新完成的厨师
+                    if let latestCuisine = appState.completionOrder.last,
+                       let latestCompleted = appState.chefs.first(where: { $0.cuisine == latestCuisine && $0.status == .completed }) {
+                        // 避免重复滚动到同一个厨师
+                        if lastScrolledChefId != latestCompleted.id {
+                            withAnimation(.easeInOut(duration: 0.8)) {
+                                proxy.scrollTo(latestCompleted.id, anchor: .center)
+                            }
+                            lastScrolledChefId = latestCompleted.id
+                        }
+                    }
+                }
+                .onChange(of: appState.chefs) { _, newChefs in
+                    // 监听厨师状态变化，特别是错误状态
+                    let errorChefs = newChefs.filter { $0.status == .error }
+                    if let latestError = errorChefs.last {
+                        // 避免重复滚动到同一个厨师
+                        if lastScrolledChefId != latestError.id {
+                            withAnimation(.easeInOut(duration: 0.8)) {
+                                proxy.scrollTo(latestError.id, anchor: .center)
+                            }
+                            lastScrolledChefId = latestError.id
+                        }
+                    }
+                }
+            }
+        }
+        .onAppear {
+            // 重置滚动状态
+            lastScrolledChefId = nil
+            // 当厨师网格视图出现时，如果应用已经开始且有厨师数据，启动卡片动画
+            if appState.hasStarted && !appState.chefs.isEmpty {
+                startCardAnimation()
+            }
+        }
+        .onChange(of: appState.isAnimatingCards) { _, isAnimating in
+            // 当动画状态变为 true 时，启动卡片动画
+            if isAnimating && appState.hasStarted && !appState.chefs.isEmpty {
+                startCardAnimation()
+            }
+        }
+    }
+    
+    // 私有方法：启动卡片动画
+    private func startCardAnimation() {
+        // 重置动画状态
+        appState.visibleCardCount = 0
+        
+        // 逐个显示卡片（每张卡片间隔3秒）
+        for index in 0..<appState.chefs.count {
+            DispatchQueue.main.asyncAfter(deadline: .now() + Double(index) * 1.0) {
+                appState.visibleCardCount = index + 1
             }
         }
     }

@@ -34,11 +34,11 @@ enum SubscriptionType: String, CaseIterable, Codable {
     var description: String {
         switch self {
         case .monthly:
-            return "月度订阅 - 首月1.9元，续费6.9元"
+            return "月度订阅 - 首月\(String(format: "%.2f", firstMonthPrice ?? 0))元，续费\(String(format: "%.2f", price))元"
         case .quarterly:
-            return "季度订阅 - 19.9元/季度"
+            return "季度订阅 - \(String(format: "%.2f", price))元/季度"
         case .yearly:
-            return "年度订阅 - 69.0元/年"
+            return "年度订阅 - \(String(format: "%.2f", price))元/年"
         }
     }
     
@@ -295,6 +295,10 @@ class AppState: ObservableObject {
     @Published var apiKey = "sk-26801bf0212a4cbeb0dc4ecc14e5e7b5"
     @Published var hasStarted = false
     
+    // 卡片动画相关
+    @Published var isAnimatingCards = false
+    @Published var visibleCardCount = 0
+    
     // 音频管理器
     let audioManager = AudioManager.shared
     
@@ -476,6 +480,8 @@ class AppState: ObservableObject {
         selectedDish = nil
         isModalOpen = false
         hasStarted = false
+        isAnimatingCards = false
+        visibleCardCount = 0
         // 停止背景音乐
         audioManager.stopBackgroundMusic()
     }
@@ -524,18 +530,49 @@ class AppState: ObservableObject {
     
     // MARK: - 收藏相关方法
     
+    private let favoritesKey = "FavoriteDishes"
+    
+    init() {
+        loadFavorites()
+    }
+    
     func addToFavorites(_ dish: Dish) {
         if !favoriteDishes.contains(where: { $0.dishName == dish.dishName }) {
             favoriteDishes.append(dish)
+            saveFavorites()
         }
     }
     
     func removeFromFavorites(_ dish: Dish) {
         favoriteDishes.removeAll(where: { $0.dishName == dish.dishName })
+        saveFavorites()
     }
     
     func isFavorite(_ dish: Dish) -> Bool {
         return favoriteDishes.contains(where: { $0.dishName == dish.dishName })
+    }
+    
+    private func saveFavorites() {
+        do {
+            let data = try JSONEncoder().encode(favoriteDishes)
+            UserDefaults.standard.set(data, forKey: favoritesKey)
+        } catch {
+            print("❌ 保存收藏数据失败: \(error)")
+        }
+    }
+    
+    private func loadFavorites() {
+        guard let data = UserDefaults.standard.data(forKey: favoritesKey) else {
+            favoriteDishes = []
+            return
+        }
+        
+        do {
+            favoriteDishes = try JSONDecoder().decode([Dish].self, from: data)
+        } catch {
+            print("❌ 加载收藏数据失败: \(error)")
+            favoriteDishes = []
+        }
     }
     
     // MARK: - 厨师角色相关方法
