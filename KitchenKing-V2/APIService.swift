@@ -196,6 +196,11 @@ class APIService: ObservableObject {
             return updatedChef
         }
         
+        // 开始播放背景音乐
+        DispatchQueue.main.async {
+            appState.audioManager.playBackgroundMusic()
+        }
+        
         let tasks = appState.cuisines.map { cuisine in
             Task {
                 let result = await callChef(ingredients: ingredients, cuisine: cuisine.name, apiKey: apiKey)
@@ -222,6 +227,9 @@ class APIService: ObservableObject {
                         }
                         return chef
                     }
+                    
+                    // 检查是否所有厨师都完成了任务
+                    checkAllChefsCompleted(appState: appState)
                 }
                 
                 return result
@@ -236,6 +244,20 @@ class APIService: ObservableObject {
             }
         }
         appState.isLoading = false
+    }
+    
+    // 检查是否所有厨师都完成了任务
+    private func checkAllChefsCompleted(appState: AppState) {
+        let allCompleted = appState.chefs.allSatisfy { chef in
+            chef.status == .completed || chef.status == .error
+        }
+        
+        if allCompleted {
+            // 所有厨师都完成了任务，停止背景音乐
+            DispatchQueue.main.async {
+                appState.audioManager.stopBackgroundMusic()
+            }
+        }
     }
 }
 

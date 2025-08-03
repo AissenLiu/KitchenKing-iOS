@@ -14,7 +14,7 @@ struct HeaderView: View {
     var body: some View {
         // 创建垂直堆栈视图，子视图间距为16点
         VStack(spacing: 16) {
-            // 应用头像容器，使用ZStack实现背景和图片叠加效果
+            // 应用头像容器，居中显示
             ZStack {
                 // 创建白色背景矩形作为头像的背景板
                 Rectangle()

@@ -8,6 +8,181 @@
 import Foundation
 import SwiftUI
 
+// MARK: - 订阅相关模型
+
+enum SubscriptionType: String, CaseIterable, Codable {
+    case monthly = "月度"
+    case quarterly = "季度"
+    case yearly = "年度"
+    
+    var price: Double {
+        switch self {
+        case .monthly: return 6.9
+        case .quarterly: return 19.9
+        case .yearly: return 69.0
+        }
+    }
+    
+    var firstMonthPrice: Double? {
+        switch self {
+        case .monthly: return 1.9
+        case .quarterly: return nil
+        case .yearly: return nil
+        }
+    }
+    
+    var description: String {
+        switch self {
+        case .monthly:
+            return "月度订阅 - 首月1.9元，续费6.9元"
+        case .quarterly:
+            return "季度订阅 - 19.9元/季度"
+        case .yearly:
+            return "年度订阅 - 69.0元/年"
+        }
+    }
+    
+    var savings: String {
+        switch self {
+        case .monthly:
+            return "灵活订阅"
+        case .quarterly:
+            return "节省5%"
+        case .yearly:
+            return "节省17%"
+        }
+    }
+}
+
+struct ChefRole: Identifiable, Codable {
+    let id = UUID()
+    let name: String
+    let title: String
+    let specialty: String
+    let personality: String
+    let cookingStyle: String
+    let imageName: String
+    let isPremium: Bool
+    let isCustom: Bool
+    
+    static let defaultChef = ChefRole(
+        name: "默认厨师",
+        title: "全能厨师",
+        specialty: "各国料理",
+        personality: "专业耐心",
+        cookingStyle: "融合创新",
+        imageName: "头像",
+        isPremium: false,
+        isCustom: false
+    )
+    
+    static let freeRoles: [ChefRole] = [
+        ChefRole(
+            name: "默认厨师",
+            title: "全能厨师",
+            specialty: "各国料理",
+            personality: "专业耐心",
+            cookingStyle: "融合创新",
+            imageName: "头像",
+            isPremium: false,
+            isCustom: false
+        ),
+        ChefRole(
+            name: "湘菜师傅",
+            title: "湘菜专家",
+            specialty: "湘菜川菜",
+            personality: "热情豪爽",
+            cookingStyle: "香辣浓郁",
+            imageName: "湘菜",
+            isPremium: false,
+            isCustom: false
+        ),
+        ChefRole(
+            name: "粤菜大厨",
+            title: "粤菜师傅",
+            specialty: "粤菜海鲜",
+            personality: "细致严谨",
+            cookingStyle: "清淡鲜美",
+            imageName: "粤菜",
+            isPremium: false,
+            isCustom: false
+        ),
+        ChefRole(
+            name: "川菜大师",
+            title: "川菜专家",
+            specialty: "川菜火锅",
+            personality: "麻辣爽快",
+            cookingStyle: "麻辣鲜香",
+            imageName: "川菜",
+            isPremium: false,
+            isCustom: false
+        ),
+        ChefRole(
+            name: "法餐厨师",
+            title: "法餐师傅",
+            specialty: "法式料理",
+            personality: "优雅浪漫",
+            cookingStyle: "精致考究",
+            imageName: "法国菜",
+            isPremium: false,
+            isCustom: false
+        ),
+        ChefRole(
+            name: "泰餐师傅",
+            title: "泰餐专家",
+            specialty: "泰式料理",
+            personality: "温和友善",
+            cookingStyle: "酸甜香辣",
+            imageName: "泰国菜",
+            isPremium: false,
+            isCustom: false
+        )
+    ]
+    
+    static let premiumRoles: [ChefRole] = [
+        ChefRole(
+            name: "米其林大厨",
+            title: "米其林三星主厨",
+            specialty: "高端法餐",
+            personality: "追求完美",
+            cookingStyle: "精致优雅",
+            imageName: "法国菜",
+            isPremium: true,
+            isCustom: false
+        ),
+        ChefRole(
+            name: "家常菜专家",
+            title: "家常菜大师",
+            specialty: "家常小炒",
+            personality: "亲切温暖",
+            cookingStyle: "传统地道",
+            imageName: "川菜",
+            isPremium: true,
+            isCustom: false
+        ),
+        ChefRole(
+            name: "营养师",
+            title: "高级营养师",
+            specialty: "健康饮食",
+            personality: "科学严谨",
+            cookingStyle: "营养均衡",
+            imageName: "粤菜",
+            isPremium: true,
+            isCustom: false
+        ),
+        ChefRole(
+            name: "创意料理师",
+            title: "创意料理达人",
+            specialty: "融合创新",
+            personality: "天马行空",
+            cookingStyle: "新潮独特",
+            imageName: "泰国菜",
+            isPremium: true,
+            isCustom: false
+        )
+    ]
+}
+
 // MARK: - 数据模型
 
 struct Ingredient: Identifiable, Codable {
@@ -119,6 +294,24 @@ class AppState: ObservableObject {
     @Published var isModalOpen = false
     @Published var apiKey = "sk-26801bf0212a4cbeb0dc4ecc14e5e7b5"
     @Published var hasStarted = false
+    
+    // 音频管理器
+    let audioManager = AudioManager.shared
+    
+    // 订阅相关
+    @Published var isSubscribed = false
+    @Published var subscriptionType: SubscriptionType?
+    @Published var remainingGenerations = 3 // 免费用户剩余生成次数
+    @Published var showSubscriptionSheet = false
+    @Published var showSettingsSheet = false
+    
+    // 收藏相关
+    @Published var favoriteDishes: [Dish] = []
+    @Published var showFavoritesSheet = false
+    
+    // 用户偏好
+    @Published var selectedChefRole: ChefRole = .defaultChef
+    @Published var customChefRoles: [ChefRole] = []
     
     // 所有支持的菜系
     let cuisines: [Cuisine] = [
@@ -283,6 +476,8 @@ class AppState: ObservableObject {
         selectedDish = nil
         isModalOpen = false
         hasStarted = false
+        // 停止背景音乐
+        audioManager.stopBackgroundMusic()
     }
     
     // 获取随机错误消息
@@ -301,5 +496,74 @@ class AppState: ObservableObject {
     // 获取随机炒菜步骤
     func getRandomCookingStep() -> String {
         return cookingSteps.randomElement() ?? "正在制作..."
+    }
+    
+    // MARK: - 订阅相关方法
+    
+    func subscribe(_ type: SubscriptionType) {
+        isSubscribed = true
+        subscriptionType = type
+        remainingGenerations = -1 // 无限生成
+    }
+    
+    func unsubscribe() {
+        isSubscribed = false
+        subscriptionType = nil
+        remainingGenerations = 3 // 重置为免费用户额度
+    }
+    
+    func canGenerate() -> Bool {
+        return isSubscribed || remainingGenerations > 0
+    }
+    
+    func useGeneration() {
+        if !isSubscribed && remainingGenerations > 0 {
+            remainingGenerations -= 1
+        }
+    }
+    
+    // MARK: - 收藏相关方法
+    
+    func addToFavorites(_ dish: Dish) {
+        if !favoriteDishes.contains(where: { $0.dishName == dish.dishName }) {
+            favoriteDishes.append(dish)
+        }
+    }
+    
+    func removeFromFavorites(_ dish: Dish) {
+        favoriteDishes.removeAll(where: { $0.dishName == dish.dishName })
+    }
+    
+    func isFavorite(_ dish: Dish) -> Bool {
+        return favoriteDishes.contains(where: { $0.dishName == dish.dishName })
+    }
+    
+    // MARK: - 厨师角色相关方法
+    
+    func getAvailableChefRoles() -> [ChefRole] {
+        var roles: [ChefRole] = ChefRole.freeRoles
+        if isSubscribed {
+            roles.append(contentsOf: ChefRole.premiumRoles)
+            roles.append(contentsOf: customChefRoles)
+        }
+        return roles
+    }
+    
+    func addCustomChefRole(_ role: ChefRole) {
+        customChefRoles.append(role)
+    }
+    
+    func removeCustomChefRole(_ role: ChefRole) {
+        customChefRoles.removeAll(where: { $0.id == role.id })
+    }
+    
+    func canRemoveRole(_ role: ChefRole) -> Bool {
+        return role.isCustom || role.isPremium
+    }
+    
+    func removeRole(_ role: ChefRole) {
+        if role.isCustom {
+            customChefRoles.removeAll(where: { $0.id == role.id })
+        }
     }
 }

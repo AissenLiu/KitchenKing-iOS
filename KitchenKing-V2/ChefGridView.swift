@@ -50,6 +50,27 @@ struct ChefGridView: View {
                 // 弹性空间，将内容推到两侧
                 Spacer()
                 
+                // 音频控制按钮
+                Button(action: {
+                    appState.audioManager.toggleMute()
+                }) {
+                    HStack {
+                        Image(systemName: appState.audioManager.isMuted ? "speaker.slash.fill" : "speaker.fill")
+                            .font(.system(size: 14))
+                    }
+                    .foregroundColor(.black)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 6)
+                    .background(
+                        Rectangle()
+                            .fill(.white)
+                            .overlay(
+                                Rectangle()
+                                    .stroke(.black, lineWidth: 2)
+                            )
+                    )
+                }
+                
                 // 重置按钮 - 像素风格设计
                 Button(action: onReset) {
                     // 按钮内容的水平布局
@@ -57,9 +78,6 @@ struct ChefGridView: View {
                         // 重置图标
                         Image(systemName: "arrow.counterclockwise")
                             .font(.system(size: 12)) // 设置图标大小为 12 点
-                        // 重置按钮文本
-                        Text("重新开始")
-                            .font(.system(size: 12, weight: .bold)) // 设置文本大小和粗体
                     }
                     .foregroundColor(.black) // 设置文本颜色为黑色
                     .padding(.horizontal, 12) // 水平内边距 12 点

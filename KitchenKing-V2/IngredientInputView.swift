@@ -20,6 +20,8 @@ struct IngredientInputView: View {
     let onRandom: () -> Void
     // 加载状态标志
     let isLoading: Bool
+    // 应用状态环境变量
+    @EnvironmentObject var appState: AppState
     
     // 视图主体内容
     var body: some View {
@@ -33,6 +35,29 @@ struct IngredientInputView: View {
                 .overlay(
                     // 垂直堆栈布局，间距 16 点
                     VStack(spacing: 16) {
+                        // 剩余次数显示
+                        if !appState.isSubscribed {
+                            HStack {
+                                Image(systemName: "bolt.fill")
+                                    .foregroundColor(.orange)
+                                    .font(.caption)
+                                
+                                Text("剩余生成次数: \(appState.remainingGenerations)")
+                                    .font(.caption)
+                                    .foregroundColor(appState.remainingGenerations <= 1 ? .red : .orange)
+                                
+                                Spacer()
+                                
+                                if appState.remainingGenerations <= 1 {
+                                    Button("升级会员") {
+                                        appState.showSubscriptionSheet = true
+                                    }
+                                    .font(.caption)
+                                    .foregroundColor(.blue)
+                                }
+                            }
+                            .padding(.horizontal, 4)
+                        }
                         
                         // 输入框区域
                         HStack(spacing: 12) {
@@ -184,4 +209,5 @@ struct IngredientInputView: View {
         // 设置非加载状态
         isLoading: false
     )
+    .environmentObject(AppState())
 }
