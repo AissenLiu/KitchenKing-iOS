@@ -32,21 +32,21 @@ struct DishDetailView: View {
     
     var body: some View {
         ZStack {
+            // 模糊背景
+            VisualEffectBlurView()
+            
             // 主内容
             mainContent
         }
+        .ignoresSafeArea()
         .onAppear {
             showContent = true
         }
     }
     
-    // MARK: - 背景蒙层
+    // MARK: - 背景蒙层（已移除，使用模糊背景）
     private var backgroundOverlay: some View {
-        Color.black.opacity(0)
-            .ignoresSafeArea()
-            .onTapGesture {
-                dismissView()
-            }
+        EmptyView()
     }
     
     // MARK: - 主内容
@@ -65,13 +65,21 @@ struct DishDetailView: View {
                     .padding(.horizontal, detailPadding)
                     .padding(.bottom, detailBottomPadding)
             }
+            .overlay(
+                Rectangle()
+                    .stroke(.black, lineWidth: 2)
+            )
+            
         }
-        .background(contentBackground)
+        .background(Color.clear)
         .clipShape(Rectangle())
         .padding(contentPadding)
         .scaleEffect(showContent ? 1.0 : 0.8)
         .opacity(showContent ? 1.0 : 0.0)
         .animation(.spring(response: 0.6, dampingFraction: 0.8), value: showContent)
+        .padding(.top,30)
+        .padding(.bottom,30)
+        
     }
     
     private var topControlBar: some View {
@@ -329,8 +337,6 @@ struct DishDetailView: View {
                 .font(.system(size: 14, weight: .light))
                 .foregroundColor(.black)
                 .lineSpacing(2)
-            
-            Spacer()
         }
         .padding(.vertical, 2)
     }
@@ -461,12 +467,7 @@ struct DishDetailView: View {
     
     // MARK: - 背景样式
     private var contentBackground: some View {
-        Rectangle()
-            .fill(.white)
-            .overlay(
-                Rectangle()
-                    .stroke(.black, lineWidth: 2)
-            )
+        Color.clear
     }
     
     private var categoryBackground: Color {
@@ -578,6 +579,49 @@ struct ScaleButtonStyle: ButtonStyle {
             .animation(.easeInOut(duration: 0.1), value: configuration.isPressed)
     }
 }
+
+// MARK: - 模糊背景视图
+struct VisualEffectBlurView: View {
+    var body: some View {
+        #if os(iOS)
+        VisualEffectBlurViewiOS()
+        #elseif os(macOS)
+        VisualEffectBlurViewmacOS()
+        #endif
+    }
+}
+
+#if os(iOS)
+struct VisualEffectBlurViewiOS: UIViewRepresentable {
+    func makeUIView(context: Context) -> UIVisualEffectView {
+        let view = UIVisualEffectView()
+        view.effect = UIBlurEffect(style: .regular)
+        return view
+    }
+    
+    func updateUIView(_ uiView: UIVisualEffectView, context: Context) {
+        uiView.effect = UIBlurEffect(style: .regular)
+    }
+}
+#endif
+
+#if os(macOS)
+struct VisualEffectBlurViewmacOS: NSViewRepresentable {
+    func makeNSView(context: Context) -> NSVisualEffectView {
+        let view = NSVisualEffectView()
+        view.blendingMode = .behindWindow
+        view.state = .active
+        view.material = .hudWindow
+        return view
+    }
+    
+    func updateNSView(_ nsView: NSVisualEffectView, context: Context) {
+        nsView.blendingMode = .behindWindow
+        nsView.state = .active
+        nsView.material = .hudWindow
+    }
+}
+#endif
 
 #Preview {
     DishDetailView(
