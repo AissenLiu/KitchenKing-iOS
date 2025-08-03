@@ -59,7 +59,7 @@ struct Chef: Identifiable, Equatable {
     let id = UUID()
     let name: String
     let cuisine: String
-    let emoji: String
+    let imageName: String
     let color: String
     var status: ChefStatus
     var dish: Dish?
@@ -70,7 +70,7 @@ struct Chef: Identifiable, Equatable {
         return lhs.id == rhs.id &&
                lhs.name == rhs.name &&
                lhs.cuisine == rhs.cuisine &&
-               lhs.emoji == rhs.emoji &&
+               lhs.imageName == rhs.imageName &&
                lhs.color == rhs.color &&
                lhs.status == rhs.status
     }
@@ -95,7 +95,7 @@ struct Chef: Identifiable, Equatable {
 struct Cuisine: Identifiable {
     let id = UUID()
     let name: String
-    let emoji: String
+    let imageName: String
     let color: String
     let chefName: String
     let completedMessages: [String]
@@ -123,7 +123,7 @@ class AppState: ObservableObject {
     let cuisines: [Cuisine] = [
         Cuisine(
             name: "湘菜",
-            emoji: "🌶️",
+            imageName: "湘菜",
             color: "text-red-600",
             chefName: "辣椒王老张",
             completedMessages: [
@@ -141,7 +141,7 @@ class AppState: ObservableObject {
         ),
         Cuisine(
             name: "粤菜",
-            emoji: "🥬",
+            imageName: "粤菜",
             color: "text-green-600",
             chefName: "阿华师傅",
             completedMessages: [
@@ -159,7 +159,7 @@ class AppState: ObservableObject {
         ),
         Cuisine(
             name: "川菜",
-            emoji: "🌶️",
+            imageName: "川菜",
             color: "text-orange-600",
             chefName: "麻辣刘大厨",
             completedMessages: [
@@ -177,7 +177,7 @@ class AppState: ObservableObject {
         ),
         Cuisine(
             name: "法国菜",
-            emoji: "🍷",
+            imageName: "法国菜",
             color: "text-blue-600",
             chefName: "Pierre大师",
             completedMessages: [
@@ -195,7 +195,7 @@ class AppState: ObservableObject {
         ),
         Cuisine(
             name: "泰国菜",
-            emoji: "🍋",
+            imageName: "泰国菜",
             color: "text-purple-600",
             chefName: "Somchai师傅",
             completedMessages: [
@@ -213,7 +213,7 @@ class AppState: ObservableObject {
         ),
         Cuisine(
             name: "俄罗斯菜",
-            emoji: "🥔",
+            imageName: "俄罗斯菜",
             color: "text-indigo-600",
             chefName: "Ivan大叔",
             completedMessages: [
@@ -267,7 +267,7 @@ class AppState: ObservableObject {
             Chef(
                 name: cuisine.chefName,
                 cuisine: cuisine.name,
-                emoji: cuisine.emoji,
+                imageName: cuisine.imageName,
                 color: cuisine.color,
                 status: .idle
             )
