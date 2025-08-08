@@ -659,7 +659,7 @@ struct SubscriptionView: View {
                             .foregroundColor(.black)
                         
                         if let firstMonthPrice = type.firstMonthPrice {
-                            Text("首月¥\(String(format: "%.0f", firstMonthPrice))")
+                            Text("首月¥\(String(format: "%.2f", firstMonthPrice))")
                                 .font(.system(size: 12, weight: .medium))
                                 .foregroundColor(.white)
                                 .padding(.horizontal, 8)
@@ -668,7 +668,7 @@ struct SubscriptionView: View {
                         }
                     }
                     
-                    Text("¥\(String(format: "%.0f", type.price))")
+                    Text("¥\(String(format: "%.2f", type.price))")
                         .font(.system(size: 24, weight: .black))
                         .foregroundColor(selectedSubscription == type ? .white : .black)
                     
