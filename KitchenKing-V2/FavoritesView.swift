@@ -12,79 +12,175 @@ import SwiftUI
 struct FavoritesView: View {
     // 观察应用状态对象，用于数据绑定
     @ObservedObject var appState: AppState
+    // 环境变量：用于关闭视图
+    @Environment(\.dismiss) private var dismiss
     // 状态属性：存储用户选择的菜品
     @State private var selectedDish: Dish?
     // 状态属性：控制是否显示详情页面
     @State private var showingDetail = false
-    // 状态属性：标记数据是否已加载完成
-    @State private var hasLoaded = false
-    
+    // 状态属性：用于强制刷新视图
+    @State private var refreshTrigger = false
     // 计算属性：定义视图的主体内容
     var body: some View {
         // 创建导航视图容器
         NavigationView {
-            // 创建垂直堆栈布局
-            VStack {
-                // 条件判断：如果数据未加载完成
-                if !hasLoaded {
-                    // 显示加载进度指示器
-                    ProgressView("加载中...")
-                        // 设置最大宽度和高度，占满可用空间
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-                } 
-                // 条件判断：如果收藏菜品列表为空
-                else if appState.favoriteDishes.isEmpty {
-                    // 显示空收藏提示视图
-                    EmptyFavoritesView()
-                } 
-                // 其他情况：有收藏菜品
-                else {
-                    // 创建列表视图
-                    List {
-                        // 遍历收藏菜品数组
-                        ForEach(appState.favoriteDishes) { dish in
-                            // 创建收藏菜品行视图
-                            FavoriteDishRow(
-                                dish: dish,
-                                // 点击回调：设置选中的菜品并显示详情
-                                onTap: {
-                                    selectedDish = dish
-                                    showingDetail = true
-                                },
-                                // 删除回调：从收藏中移除菜品
-                                onRemove: {
-                                    appState.removeFromFavorites(dish)
+            ZStack {
+                // 背景
+                Color.white
+                    .ignoresSafeArea()
+                
+                VStack(spacing: 0) {
+                    // 头部统计信息
+                    if !appState.favoriteDishes.isEmpty {
+                        headerStatsView
+                    }
+                    
+                    // 条件判断：如果收藏菜品列表为空
+                    if appState.favoriteDishes.isEmpty {
+                        // 显示空收藏提示视图
+                        EmptyFavoritesView()
+                    } else {
+                        // 创建滚动视图
+                        ScrollView {
+                            LazyVStack(spacing: 16) {
+                                // 遍历收藏菜品数组
+                                ForEach(appState.favoriteDishes) { dish in
+                                    // 创建收藏菜品卡片视图
+                                    FavoriteDishCard(
+                                        dish: dish,
+                                        // 点击回调：设置选中的菜品并显示详情
+                                        onTap: {
+                                            selectedDish = dish
+                                            showingDetail = true
+                                        },
+                                        // 删除回调：从收藏中移除菜品
+                                        onRemove: {
+                                            withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
+                                                appState.removeFromFavorites(dish)
+                                            }
+                                        }
+                                    )
                                 }
-                            )
+                            }
+                            .padding(.horizontal, 20)
+                            .padding(.bottom, 20)
                         }
-                        // 添加删除功能，调用删除方法
-                        .onDelete(perform: deleteFavorites)
                     }
                 }
             }
             // 设置导航栏标题
             .navigationTitle("喜欢的菜")
+            .navigationBarTitleDisplayMode(.large)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("返回") {
+                        dismiss()
+                    }
+                    .font(.system(size: 16, weight: .medium))
+                    .foregroundColor(.black)
+                }
+            }
             // 添加模态页面，显示菜品详情
             .sheet(isPresented: $showingDetail) {
                 // 条件绑定：确保有选中的菜品
                 if let dish = selectedDish {
-                    // 显示菜品详情视图，现代风格
-                    DishDetailView.modern(dish: dish) {
-                        // 关闭回调：隐藏详情页面
-                        showingDetail = false
-                    }
+                    // 显示菜品详情视图，现代风格，隐藏收藏按钮
+                    DishDetailView.modern(
+                        dish: dish,
+                        onClose: {
+                            // 关闭回调：隐藏详情页面
+                            showingDetail = false
+                        },
+                        showFavoriteButton: false
+                    )
                 }
             }
-            // 视图出现时的回调
             .onAppear {
-                // 如果数据还未加载
-                if !hasLoaded {
-                    // 确保数据已加载
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                        // 延迟设置加载完成标志
-                        hasLoaded = true
+                // 强制刷新收藏数据，解决第一次显示时的状态同步问题
+                refreshTrigger.toggle()
+                // 重新加载收藏数据以确保数据是最新的
+                appState.loadFavorites()
+            }
+        }
+    }
+    
+    // 头部统计信息视图
+    private var headerStatsView: some View {
+        VStack(spacing: 16) {
+            HStack {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("收藏菜品")
+                        .font(.system(size: 16, weight: .medium))
+                        .foregroundColor(.gray)
+                    
+                    Text("\(appState.favoriteDishes.count) 道菜")
+                        .font(.system(size: 24, weight: .bold))
+                        .foregroundColor(.black)
+                }
+                
+                Spacer()
+                
+                // iCloud 同步状态
+                cloudSyncIndicator
+                
+                Image(systemName: "heart.fill")
+                    .font(.system(size: 24))
+                    .foregroundColor(.red)
+            }
+            .padding(.horizontal, 20)
+            .padding(.top, 20)
+            
+            // 同步状态消息
+            if let status = appState.cloudSyncStatus {
+                HStack {
+                    Image(systemName: "checkmark.circle.fill")
+                        .font(.system(size: 14))
+                        .foregroundColor(.green)
+                    
+                    Text(status)
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundColor(.green)
+                    
+                    Spacer()
+                }
+                .padding(.horizontal, 20)
+                .animation(.easeInOut(duration: 0.3), value: appState.cloudSyncStatus)
+            }
+            
+            Rectangle()
+                .fill(Color.gray.opacity(0.2))
+                .frame(height: 1)
+                .padding(.horizontal, 20)
+        }
+        .background(Color.white)
+    }
+    
+    // iCloud 同步指示器
+    private var cloudSyncIndicator: some View {
+        HStack(spacing: 8) {
+            if CloudKitManager.shared.isSyncing {
+                ProgressView()
+                    .progressViewStyle(CircularProgressViewStyle(tint: .blue))
+                    .scaleEffect(0.8)
+                
+                Text("同步中")
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundColor(.blue)
+            } else {
+                Button(action: {
+                    appState.manualSync()
+                }) {
+                    HStack(spacing: 4) {
+                        Image(systemName: appState.isCloudSyncEnabled ? "icloud.fill" : "icloud.slash")
+                            .font(.system(size: 16))
+                            .foregroundColor(appState.isCloudSyncEnabled ? .blue : .gray)
+                        
+                        Text(appState.isCloudSyncEnabled ? "iCloud" : "离线")
+                            .font(.system(size: 12, weight: .medium))
+                            .foregroundColor(appState.isCloudSyncEnabled ? .blue : .gray)
                     }
                 }
+                .buttonStyle(PlainButtonStyle())
             }
         }
     }
@@ -106,123 +202,129 @@ struct FavoritesView: View {
 struct EmptyFavoritesView: View {
     // 计算属性：定义视图的主体内容
     var body: some View {
-        // 创建垂直堆栈布局，间距20点
-        VStack(spacing: 20) {
-            // 显示心形斜杠图标，表示无收藏
-            Image(systemName: "heart.slash")
-                // 设置系统字体大小为60点
-                .font(.system(size: 60))
-                // 设置文字颜色为黑色
-                .foregroundColor(.black)
-                // 设置透明度为0.3
-                .opacity(0.3)
+        VStack(spacing: 32) {
+            // 图标区域
+            ZStack {
+                Circle()
+                    .fill(Color.red.opacity(0.1))
+                    .frame(width: 120, height: 120)
+                
+                Image(systemName: "heart")
+                    .font(.system(size: 50, weight: .light))
+                    .foregroundColor(.red.opacity(0.6))
+            }
             
-            // 显示"暂无收藏"文本
-            Text("暂无收藏")
-                // 设置字体为二级标题
-                .font(.title2)
-                // 设置字重为中等
-                .fontWeight(.medium)
-                // 设置文字颜色为黑色
-                .foregroundColor(.black)
-                // 设置透明度为0.6
-                .opacity(0.6)
+            VStack(spacing: 16) {
+                Text("还没有收藏的菜品")
+                    .font(.system(size: 22, weight: .semibold))
+                    .foregroundColor(.black)
+                
+                Text("在菜品详情页点击心形图标\n就能将喜欢的菜品添加到这里")
+                    .font(.system(size: 16))
+                    .foregroundColor(.gray)
+                    .multilineTextAlignment(.center)
+                    .lineSpacing(4)
+            }
             
-            // 显示操作提示文本
-            Text("点击菜品详情中的心形图标来收藏喜欢的菜品")
-                // 设置字体为副标题
-                .font(.subheadline)
-                // 设置文字颜色为黑色
-                .foregroundColor(.black)
-                // 设置透明度为0.5
-                .opacity(0.5)
-                // 设置多行文本居中对齐
-                .multilineTextAlignment(.center)
-                // 设置水平内边距
-                .padding(.horizontal)
+            // 装饰性小图标
+            HStack(spacing: 20) {
+                ForEach(0..<3) { _ in
+                    Image(systemName: "heart.fill")
+                        .font(.system(size: 12))
+                        .foregroundColor(.red.opacity(0.3))
+                }
+            }
         }
-        // 设置最大宽度和高度，占满可用空间
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        // 设置背景颜色为白色
         .background(Color.white)
+        .padding(.horizontal, 40)
     }
 }
 
-// MARK: - 收藏菜品行
-// 定义收藏菜品行视图结构体，遵循View协议
-struct FavoriteDishRow: View {
+// MARK: - 收藏菜品卡片
+// 定义收藏菜品卡片视图结构体，遵循View协议
+struct FavoriteDishCard: View {
     // 常量属性：菜品数据
     let dish: Dish
     // 常量属性：点击回调闭包
     let onTap: () -> Void
     // 常量属性：删除回调闭包
     let onRemove: () -> Void
+    // 状态属性：控制删除确认对话框
+    @State private var showingDeleteAlert = false
     
     // 计算属性：定义视图的主体内容
     var body: some View {
-        // 创建按钮，点击时执行onTap回调
         Button(action: onTap) {
-            // 创建水平堆栈布局，间距12点
-            HStack(spacing: 12) {
-                // 显示填充的心形图标，表示已收藏
-                Image(systemName: "heart.fill")
-                    // 设置图标颜色为红色
-                    .foregroundColor(.red)
-                    // 设置透明度为0.6
-                    .opacity(0.6)
-                    // 设置字体为说明文字大小
-                    .font(.caption)
-                
-                // 创建垂直堆栈布局，左对齐，间距4点
-                VStack(alignment: .leading, spacing: 4) {
-                    // 显示菜品名称
-                    Text(dish.dishName)
-                        // 设置字体为标题样式
-                        .font(.headline)
-                        // 设置文字颜色为黑色
-                        .foregroundColor(.black)
-                        // 限制行数为1行
-                        .lineLimit(1)
+            VStack(spacing: 16) {
+                // 头部区域
+                HStack(spacing: 12) {
                     
-                    // 显示主要食材信息
-                    Text("主要食材: \(dish.ingredients.main.joined(separator: ", "))")
-                        // 设置字体为说明文字大小
-                        .font(.caption)
-                        // 设置文字颜色为黑色
-                        .foregroundColor(.black)
-                        // 设置透明度为0.5
-                        .opacity(0.5)
-                        // 限制行数为1行
-                        .lineLimit(1)
+                    // 菜品信息
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(dish.dishName)
+                            .font(.system(size: 18, weight: .semibold))
+                            .foregroundColor(.black)
+                            .lineLimit(1)
+                        
+                        Text(dish.flavorProfile.taste)
+                            .font(.system(size: 14))
+                            .foregroundColor(.gray)
+                            .lineLimit(2)
+                    }
+                    
+                    Spacer()
+                    
+                    // 删除按钮
+                    Button(action: { showingDeleteAlert = true }) {
+                        Image(systemName: "xmark.circle.fill")
+                            .font(.system(size: 20))
+                            .foregroundColor(.gray.opacity(0.6))
+                    }
+                    .buttonStyle(PlainButtonStyle())
                 }
                 
-                // 创建弹性空间，将内容推向两侧
-                Spacer()
+                // 分隔线
+                Rectangle()
+                    .fill(Color.gray.opacity(0.2))
+                    .frame(height: 1)
                 
-                // 显示右箭头图标
-                Image(systemName: "chevron.right")
-                    // 设置图标颜色为黑色
-                    .foregroundColor(.black)
-                    // 设置透明度为0.4
-                    .opacity(0.4)
-                    // 设置字体为说明文字大小
-                    .font(.caption)
+                // 食材信息
+                HStack {
+                    VStack(alignment: .leading, spacing: 8) {
+                        HStack {
+                            Text("主要食材")
+                                .font(.system(size: 12, weight: .medium))
+                                .foregroundColor(.gray)
+                        }
+                        
+                        Text(dish.ingredients.main.prefix(3).joined(separator: "、"))
+                            .font(.system(size: 14))
+                            .foregroundColor(.black)
+                            .lineLimit(1)
+                    }
+                    
+                    Spacer()
+                    
+                }
             }
-            // 设置垂直内边距为8点
-            .padding(.vertical, 8)
+            .padding(20)
+            .background(Color.white)
+            .overlay(
+                Rectangle()
+                    .stroke(.black, lineWidth: 1)
+            )
         }
-        // 设置按钮样式为无样式按钮
         .buttonStyle(PlainButtonStyle())
-        // 添加滑动操作功能
-        .swipeActions(edge: .trailing, allowsFullSwipe: true) {
-            // 创建删除按钮，破坏性角色
-            Button(role: .destructive) {
-                // 执行删除回调
+        .scaleEffect(1.0)
+        .animation(.easeInOut(duration: 0.1), value: showingDeleteAlert)
+        .alert("确认删除", isPresented: $showingDeleteAlert) {
+            Button("取消", role: .cancel) { }
+            Button("删除", role: .destructive) {
                 onRemove()
-            } label: {
-                // 按钮标签：删除图标和文字
-                Label("删除", systemImage: "trash")
             }
+        } message: {
+            Text("确定要从收藏中移除「\(dish.dishName)」吗？")
         }
     }
 }
@@ -233,6 +335,26 @@ struct FavoriteDishRow: View {
     let testAppState = createTestAppState()
     // 返回收藏视图实例用于预览
     return FavoritesView(appState: testAppState)
+}
+
+// 卡片预览
+#Preview("收藏卡片") {
+    let testDish = Dish(
+        dishName: "宫保鸡丁",
+        ingredients: Dish.Ingredients(
+            main: ["鸡胸肉", "花生米", "干辣椒"],
+            auxiliary: ["葱", "姜", "蒜"],
+            seasoning: ["生抽", "老抽", "料酒"]
+        ),
+        steps: [],
+        tips: [],
+        flavorProfile: FlavorProfile(taste: "酸甜微辣，口感丰富", specialEffect: "川菜经典"),
+        disclaimer: ""
+    )
+    
+    FavoriteDishCard(dish: testDish, onTap: {}, onRemove: {})
+        .padding()
+        .background(Color.gray.opacity(0.1))
 }
 
 // MARK: - 测试数据创建

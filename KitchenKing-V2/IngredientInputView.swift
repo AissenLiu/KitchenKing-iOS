@@ -106,6 +106,8 @@ struct IngredientInputView: View {
                                 )
                         )
                         
+                        
+                        
                         // 提示文本区域
                         Text("多个食材请用逗号分隔，如：鸡蛋，番茄，牛肉")
                             // 设置字体样式：14 号圆角字体
@@ -153,15 +155,15 @@ struct IngredientInputView: View {
                             
                             // 生成按钮 - 像素风格
                             Button(action: {
-                                // 检查输入有效且不在加载状态时执行
-                                if isValidIngredients && !isLoading {
+                                // 检查输入有效、不在加载状态且所有厨师未完成制作时执行
+                                if isValidIngredients && !isLoading && !appState.allChefsFinished {
                                     // 调用生成菜谱回调函数
                                     onGenerate()
                                 }
                             }) {
                                 HStack {
-                                    // 根据加载状态显示不同文本
-                                    Text(isLoading ? "正在制作中" : "开始厨王争霸")
+                                    // 根据状态显示不同文本
+                                    Text(buttonText)
                                         // 设置字体样式：16 号粗体圆角字体
                                         .font(.system(size: 16, weight: .bold))
                                     // 如果正在加载，显示像素加载指示器
@@ -175,23 +177,97 @@ struct IngredientInputView: View {
                                 .frame(maxWidth: .infinity)
                                 // 垂直内边距 12 点
                                 .padding(.vertical, 12)
-                                // 设置黑色背景
-                                .background(Color.black)
+                                // 设置背景颜色
+                                .background(buttonBackgroundColor)
                             }
-                            // 根据输入验证和加载状态禁用按钮
-                            .disabled(!isValidIngredients || isLoading)
+                            // 根据输入验证、加载状态和所有厨师完成状态禁用按钮
+                            .disabled(!isValidIngredients || isLoading || appState.allChefsFinished)
+                            
+                            
+                            // 忌口开关区域
+//                            HStack {
+//                                Image(systemName: "exclamationmark.triangle.fill")
+//                                    .foregroundColor(appState.hasAllergies ? .orange : .gray)
+//                                    .font(.system(size: 16))
+//                                
+//                                Text("是否有忌口")
+//                                    .font(.system(size: 14, design: .rounded))
+//                                    .foregroundColor(.primary)
+//                                
+//                                Spacer()
+//                                
+//                                Toggle("", isOn: $appState.hasAllergies)
+//                                    .labelsHidden()
+//                                    .scaleEffect(0.8)
+//                                    .onChange(of: appState.hasAllergies) { oldValue, newValue in
+//                                        if newValue {
+//                                            appState.showAllergiesSheet = true
+//                                        } else {
+//                                            appState.allergiesContent = ""
+//                                        }
+//                                    }
+//                            }
+//                            .padding(.horizontal, 4)
+                            
+                            // 忌口信息显示
+//                            if appState.hasAllergies && !appState.allergiesContent.isEmpty {
+//                                HStack {
+//                                    Image(systemName: "info.circle.fill")
+//                                        .foregroundColor(.orange)
+//                                        .font(.system(size: 12))
+//                                    
+//                                    Text("忌口：\(appState.allergiesContent)")
+//                                        .font(.system(size: 12, design: .rounded))
+//                                        .foregroundColor(.orange)
+//                                        .lineLimit(1)
+//                                    
+//                                    Spacer()
+//                                    
+//                                    Button("修改") {
+//                                        appState.showAllergiesSheet = true
+//                                    }
+//                                    .font(.caption)
+//                                    .foregroundColor(.blue)
+//                                }
+//                                .padding(.horizontal, 4)
+//                            }
                         }
                     }
                     // 设置内边距 20 点
                     .padding(20)
                 )
         }
+//        .sheet(isPresented: $appState.showAllergiesSheet) {
+//            AllergiesInputSheet(appState: appState)
+//                .presentationDetents([.fraction(0.4)])
+//                .presentationDragIndicator(.visible)
+//        }
     }
     
     // 私有计算属性：验证食材输入是否有效
     private var isValidIngredients: Bool {
         // 去除首尾空白字符和换行符后，检查是否不为空
         return !ingredients.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+    
+    // 私有计算属性：按钮显示文本
+    private var buttonText: String {
+        if isLoading {
+            return "正在制作中"
+        } else if appState.allChefsFinished {
+            return "制作已完成，请重新开始"
+        } else {
+            return "开始厨王争霸"
+        }
+    }
+    
+    // 私有计算属性：按钮背景颜色
+    private var buttonBackgroundColor: Color {
+        if appState.allChefsFinished {
+            return Color.gray
+        } else {
+            return Color.black
+        }
     }
 }
 
@@ -210,4 +286,85 @@ struct IngredientInputView: View {
         isLoading: false
     )
     .environmentObject(AppState())
+}
+
+// 忌口输入弹窗
+struct AllergiesInputSheet: View {
+    @ObservedObject var appState: AppState
+    @State private var tempAllergies = ""
+    
+    var body: some View {
+        VStack(spacing: 20) {
+            // 标题
+            HStack {
+                Image(systemName: "exclamationmark.triangle.fill")
+                    .foregroundColor(.orange)
+                    .font(.title2)
+                
+                Text("忌口信息")
+                    .font(.title2)
+                    .fontWeight(.bold)
+                
+                Spacer()
+            }
+            .padding(.horizontal)
+            
+            // 输入框
+            VStack(alignment: .leading, spacing: 8) {
+                Text("请输入您的忌口食材或过敏原")
+                    .font(.system(size: 14, design: .rounded))
+                    .foregroundColor(.secondary)
+                
+                TextField("例如：花生，海鲜，牛肉，香菜", text: $tempAllergies)
+                    .textFieldStyle(RoundedBorderTextFieldStyle())
+                    .font(.system(size: 16, design: .rounded))
+            }
+            .padding(.horizontal)
+            
+            // 提示文本
+            Text("💡 多个忌口食材请用逗号分隔，我们会在制作菜谱时特别注意避免这些食材")
+                .font(.system(size: 12, design: .rounded))
+                .foregroundColor(.secondary)
+                .padding(.horizontal)
+            
+            // 按钮区域
+            HStack(spacing: 16) {
+                Button("取消") {
+                    tempAllergies = appState.allergiesContent
+                    appState.hasAllergies = !appState.allergiesContent.isEmpty
+                    appState.showAllergiesSheet = false
+                }
+                .font(.system(size: 16, weight: .medium))
+                .foregroundColor(.gray)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 12)
+                .background(
+                    Rectangle()
+                        .fill(Color.gray.opacity(0.1))
+                        .overlay(
+                            Rectangle()
+                                .stroke(.gray, lineWidth: 1)
+                        )
+                )
+                
+                Button("确定") {
+                    appState.allergiesContent = tempAllergies.trimmingCharacters(in: .whitespacesAndNewlines)
+                    appState.hasAllergies = !appState.allergiesContent.isEmpty
+                    appState.showAllergiesSheet = false
+                }
+                .font(.system(size: 16, weight: .bold))
+                .foregroundColor(.white)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 12)
+                .background(Color.orange)
+            }
+            .padding(.horizontal)
+            
+            Spacer()
+        }
+        .padding(.top)
+        .onAppear {
+            tempAllergies = appState.allergiesContent
+        }
+    }
 }

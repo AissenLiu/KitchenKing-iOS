@@ -11,8 +11,8 @@ class APIService: ObservableObject {
     private let deepseekAPIURL = "https://api.deepseek.com/v1/chat/completions"
     
     // 调用 DeepSeek API
-    func callDeepSeekAPI(ingredients: String, cuisine: String, apiKey: String) async throws -> ApiResponse {
-        let prompt = generatePrompt(ingredients: ingredients, cuisine: cuisine)
+    func callDeepSeekAPI(ingredients: String, cuisine: String, apiKey: String, allergies: String? = nil) async throws -> ApiResponse {
+        let prompt = generatePrompt(ingredients: ingredients, cuisine: cuisine, allergies: allergies)
         let requestBody: [String: Any] = [
             "model": "deepseek-chat",
             "messages": [
@@ -87,11 +87,20 @@ class APIService: ObservableObject {
     }
     
     // 生成提示词
-    private func generatePrompt(ingredients: String, cuisine: String) -> String {
+    private func generatePrompt(ingredients: String, cuisine: String, allergies: String? = nil) -> String {
+        var allergyText = ""
+        if let allergies = allergies, !allergies.isEmpty {
+            allergyText = """
+            
+            ⚠️ 忌口/过敏信息：\(allergies)
+            请特别注意避免使用上述忌口食材，并在制作过程中确保不会引入过敏原。
+            """
+        }
+        
         return """
         你是一名精通\(cuisine)的五星级大厨，根据用户提供的食材创作菜谱。
         
-        食材：\(ingredients)
+        食材：\(ingredients)\(allergyText)
         
         **重要指示**：
         请根据食材的特性智能判断创作风格：
@@ -101,8 +110,8 @@ class APIService: ObservableObject {
         **通用要求**：
         1. **智能判断风格**：根据食材特性决定是专业模式还是幽默模式
         2. **\(cuisine)特色**：充分体现\(cuisine)的烹饪特点
-        3. **详细步骤**：提供完整的制作流程
-        4. **技术要点**：包含火候控制、预处理技巧等专业指导
+        3. **详细步骤**：提供完整详细的制作流程
+        4. **技术要点**：包含调料的多少、火候控制、时间的控制、预处理技巧等专业指导
         5. **除了菜品名称外的所有文字都配上Emoji
         
         **幽默模式额外要求**（当判断为幽默模式时）：
@@ -175,9 +184,9 @@ class APIService: ObservableObject {
     }
     
     // 调用单个厨师
-    func callChef(ingredients: String, cuisine: String, apiKey: String) async -> (cuisine: String, result: ApiResponse) {
+    func callChef(ingredients: String, cuisine: String, apiKey: String, allergies: String? = nil) async -> (cuisine: String, result: ApiResponse) {
         do {
-            let result = try await callDeepSeekAPI(ingredients: ingredients, cuisine: cuisine, apiKey: apiKey)
+            let result = try await callDeepSeekAPI(ingredients: ingredients, cuisine: cuisine, apiKey: apiKey, allergies: allergies)
             return (cuisine, result)
         } catch {
             return (cuisine, ApiResponse(success: false, data: nil, error: error.localizedDescription))
@@ -207,9 +216,10 @@ class APIService: ObservableObject {
             appState.visibleCardCount = 0
         }
         
+        let allergies = appState.hasAllergies ? appState.allergiesContent : nil
         let tasks = appState.cuisines.map { cuisine in
             Task {
-                let result = await callChef(ingredients: ingredients, cuisine: cuisine.name, apiKey: apiKey)
+                let result = await callChef(ingredients: ingredients, cuisine: cuisine.name, apiKey: apiKey, allergies: allergies)
                 
                 await MainActor.run {
                     // 更新完成顺序
@@ -257,6 +267,9 @@ class APIService: ObservableObject {
         let allCompleted = appState.chefs.allSatisfy { chef in
             chef.status == .completed || chef.status == .error
         }
+        
+        // 更新 AppState 中的完成状态
+        appState.checkAllChefsFinished()
         
         if allCompleted {
             // 所有厨师都完成了任务，停止背景音乐

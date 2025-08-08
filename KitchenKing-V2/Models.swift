@@ -294,6 +294,7 @@ class AppState: ObservableObject {
     @Published var isModalOpen = false
     @Published var apiKey = "sk-26801bf0212a4cbeb0dc4ecc14e5e7b5"
     @Published var hasStarted = false
+    @Published var allChefsFinished = false // 所有厨师是否都已完成制作
     
     // 卡片动画相关
     @Published var isAnimatingCards = false
@@ -316,6 +317,11 @@ class AppState: ObservableObject {
     // 用户偏好
     @Published var selectedChefRole: ChefRole = .defaultChef
     @Published var customChefRoles: [ChefRole] = []
+    
+    // 忌口相关
+    @Published var hasAllergies = false // 是否有忌口
+    @Published var allergiesContent = "" // 忌口内容
+    @Published var showAllergiesSheet = false // 是否显示忌口输入弹窗
     
     // 所有支持的菜系
     let cuisines: [Cuisine] = [
@@ -480,6 +486,7 @@ class AppState: ObservableObject {
         selectedDish = nil
         isModalOpen = false
         hasStarted = false
+        allChefsFinished = false // 重置完成状态
         isAnimatingCards = false
         visibleCardCount = 0
         // 停止背景音乐
@@ -502,6 +509,18 @@ class AppState: ObservableObject {
     // 获取随机炒菜步骤
     func getRandomCookingStep() -> String {
         return cookingSteps.randomElement() ?? "正在制作..."
+    }
+    
+    // 检查是否所有厨师都完成了制作
+    func checkAllChefsFinished() {
+        // 检查是否所有厨师都处于完成或错误状态（即没有待命或制作中的厨师）
+        let allFinished = !chefs.isEmpty && chefs.allSatisfy { chef in
+            chef.status == .completed || chef.status == .error
+        }
+        
+        if allFinished != allChefsFinished {
+            allChefsFinished = allFinished
+        }
     }
     
     // MARK: - 订阅相关方法
@@ -531,27 +550,80 @@ class AppState: ObservableObject {
     // MARK: - 收藏相关方法
     
     private let favoritesKey = "FavoriteDishes"
+    private let cloudKitManager = CloudKitManager.shared
+    
+    // iCloud 同步相关状态
+    @Published var isCloudSyncEnabled = true
+    @Published var cloudSyncStatus: String?
     
     init() {
+        // 加载用户设置
+        isCloudSyncEnabled = UserDefaults.standard.object(forKey: "CloudSyncEnabled") as? Bool ?? true
+        
         loadFavorites()
+        setupCloudKitSync()
+    }
+    
+    // 设置 CloudKit 同步
+    private func setupCloudKitSync() {
+        // 检查 iCloud 状态并同步本地数据
+        Task {
+            let isAvailable = await cloudKitManager.checkiCloudStatus()
+            if isAvailable && isCloudSyncEnabled {
+                await syncWithiCloud()
+            }
+        }
     }
     
     func addToFavorites(_ dish: Dish) {
         if !favoriteDishes.contains(where: { $0.dishName == dish.dishName }) {
             favoriteDishes.append(dish)
             saveFavorites()
+            
+            // 同步到 iCloud
+            if isCloudSyncEnabled {
+                Task {
+                    let success = await cloudKitManager.saveFavoriteDish(dish)
+                    if success {
+                        DispatchQueue.main.async {
+                            self.cloudSyncStatus = "已同步到 iCloud"
+                        }
+                        // 清除状态消息
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+                            self.cloudSyncStatus = nil
+                        }
+                    }
+                }
+            }
         }
     }
     
     func removeFromFavorites(_ dish: Dish) {
         favoriteDishes.removeAll(where: { $0.dishName == dish.dishName })
         saveFavorites()
+        
+        // 从 iCloud 删除
+        if isCloudSyncEnabled {
+            Task {
+                let success = await cloudKitManager.deleteFavoriteDish(dish)
+                if success {
+                    DispatchQueue.main.async {
+                        self.cloudSyncStatus = "已从 iCloud 删除"
+                    }
+                    // 清除状态消息
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+                        self.cloudSyncStatus = nil
+                    }
+                }
+            }
+        }
     }
     
     func isFavorite(_ dish: Dish) -> Bool {
         return favoriteDishes.contains(where: { $0.dishName == dish.dishName })
     }
     
+    // 本地保存（作为备份）
     private func saveFavorites() {
         do {
             let data = try JSONEncoder().encode(favoriteDishes)
@@ -561,7 +633,8 @@ class AppState: ObservableObject {
         }
     }
     
-    private func loadFavorites() {
+    // 本地加载（作为备份）
+    func loadFavorites() {
         guard let data = UserDefaults.standard.data(forKey: favoritesKey) else {
             favoriteDishes = []
             return
@@ -572,6 +645,66 @@ class AppState: ObservableObject {
         } catch {
             print("❌ 加载收藏数据失败: \(error)")
             favoriteDishes = []
+        }
+    }
+    
+    // 与 iCloud 同步
+    func syncWithiCloud() async {
+        guard isCloudSyncEnabled else { return }
+        
+        DispatchQueue.main.async {
+            self.cloudSyncStatus = "正在同步..."
+        }
+        
+        // 从 iCloud 获取数据
+        let cloudDishes = await cloudKitManager.fetchFavoriteDishes()
+        
+        DispatchQueue.main.async {
+            // 合并本地和云端数据（避免重复）
+            let localDishNames = Set(self.favoriteDishes.map { $0.dishName })
+            let cloudDishNames = Set(cloudDishes.map { $0.dishName })
+            
+            // 添加云端独有的菜品到本地
+            let newCloudDishes = cloudDishes.filter { !localDishNames.contains($0.dishName) }
+            self.favoriteDishes.append(contentsOf: newCloudDishes)
+            
+            // 同步本地独有的菜品到云端
+            let newLocalDishes = self.favoriteDishes.filter { !cloudDishNames.contains($0.dishName) }
+            
+            if !newLocalDishes.isEmpty {
+                Task {
+                    await self.cloudKitManager.syncLocalFavoritesToCloud(newLocalDishes)
+                }
+            }
+            
+            // 保存合并后的数据到本地
+            self.saveFavorites()
+            
+            self.cloudSyncStatus = "同步完成"
+            
+            // 清除状态消息
+            DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+                self.cloudSyncStatus = nil
+            }
+            
+            print("✅ iCloud 同步完成，本地: \(self.favoriteDishes.count) 道菜，云端: \(cloudDishes.count) 道菜")
+        }
+    }
+    
+    // 手动触发同步
+    func manualSync() {
+        Task {
+            await syncWithiCloud()
+        }
+    }
+    
+    // 切换 iCloud 同步状态
+    func toggleCloudSync() {
+        isCloudSyncEnabled.toggle()
+        UserDefaults.standard.set(isCloudSyncEnabled, forKey: "CloudSyncEnabled")
+        
+        if isCloudSyncEnabled {
+            setupCloudKitSync()
         }
     }
     

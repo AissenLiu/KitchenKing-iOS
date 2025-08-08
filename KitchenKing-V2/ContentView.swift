@@ -42,11 +42,42 @@ struct ContentView: View {
     
     var body: some View {
         NavigationView {
-            ScrollView {
-                Color.white
-                    .ignoresSafeArea()
-
-                VStack(spacing: 24) {
+            ZStack {
+                // 主内容区域
+                ScrollView {
+                    VStack(spacing: 24) {
+                        // 为顶部按钮预留空间
+                        Spacer(minLength: 80)
+                        
+                        HeaderView()
+                            
+                        IngredientInputView(
+                            ingredients: $ingredients,
+                            placeholder: placeholders[placeholderIndex],
+                            onGenerate: handleGenerate,
+                            onRandom: handleRandom,
+                            isLoading: appState.isLoading
+                        )
+                        .environmentObject(appState)
+                        .padding(.top, 100)
+                            
+                        if appState.hasStarted {
+                            ChefGridView(
+                                appState: appState,
+                                onDishClick: handleDishClick,
+                                onReset: handleReset
+                            )
+                            .padding(.top, 100)
+                        }
+                            
+                        Spacer(minLength: 50)
+                    }
+                    .padding()
+                }
+                .background(Color.white.ignoresSafeArea())
+                
+                // 固定在顶部的按钮
+                VStack {
                     HStack {
                         Spacer()
                         
@@ -76,34 +107,11 @@ struct ContentView: View {
                             }
                         }
                         .padding(.trailing, 20)
+                        .padding(.top, 10)
                     }
                     
-                    Spacer(minLength: appState.hasStarted ? 0 : 30)
-                    
-                    HeaderView()
-                        
-                    IngredientInputView(
-                        ingredients: $ingredients,
-                        placeholder: placeholders[placeholderIndex],
-                        onGenerate: handleGenerate,
-                        onRandom: handleRandom,
-                        isLoading: appState.isLoading
-                    )
-                    .environmentObject(appState)
-                    .padding(.top, 100)
-                        
-                    if appState.hasStarted {
-                        ChefGridView(
-                            appState: appState,
-                            onDishClick: handleDishClick,
-                            onReset: handleReset
-                        )
-                        .padding(.top, 100)
-                    }
-                        
-                    Spacer(minLength: 50)
+                    Spacer()
                 }
-                .padding()
             }
             .sheet(isPresented: $appState.isModalOpen) {
                 if let dish = appState.selectedDish {

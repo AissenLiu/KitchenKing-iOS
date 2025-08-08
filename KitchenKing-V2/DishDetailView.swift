@@ -12,17 +12,19 @@ struct DishDetailView: View {
     let onClose: () -> Void
     let onFavorite: (Bool) -> Void
     let isFavorite: Bool
+    let showFavoriteButton: Bool
     let theme: DetailTheme = .modern
     
     @State private var scrollOffset: CGFloat = 0
     @State private var showContent = false
     @State private var localIsFavorite: Bool
     
-    init(dish: Dish, onClose: @escaping () -> Void, onFavorite: @escaping (Bool) -> Void, isFavorite: Bool) {
+    init(dish: Dish, onClose: @escaping () -> Void, onFavorite: @escaping (Bool) -> Void, isFavorite: Bool, showFavoriteButton: Bool = true) {
         self.dish = dish
         self.onClose = onClose
         self.onFavorite = onFavorite
         self.isFavorite = isFavorite
+        self.showFavoriteButton = showFavoriteButton
         self._localIsFavorite = State(initialValue: isFavorite)
     }
     
@@ -88,19 +90,21 @@ struct DishDetailView: View {
                 dishTitleSection
                 
                 Spacer()
-                // 收藏按钮
-                Button(action: toggleFavorite) {
-                    ZStack {
-                        Rectangle()
-                            .fill(.white)
-                            .frame(width: closeButtonSize, height: closeButtonSize)
-   
-                        Image(systemName: localIsFavorite ? "heart.fill" : "heart")
-                            .font(.system(size: closeIconSize, weight: .bold))
-                            .foregroundColor(localIsFavorite ? .red : .black)
+                // 收藏按钮（条件显示）
+                if showFavoriteButton {
+                    Button(action: toggleFavorite) {
+                        ZStack {
+                            Rectangle()
+                                .fill(.white)
+                                .frame(width: closeButtonSize, height: closeButtonSize)
+       
+                            Image(systemName: localIsFavorite ? "heart.fill" : "heart")
+                                .font(.system(size: closeIconSize, weight: .bold))
+                                .foregroundColor(localIsFavorite ? .red : .black)
+                        }
                     }
+                    .buttonStyle(ScaleButtonStyle())
                 }
-                .buttonStyle(ScaleButtonStyle())
                 
                 // 关闭按钮
                 Button(action: dismissView) {
@@ -559,13 +563,15 @@ extension DishDetailView {
         dish: Dish, 
         onClose: @escaping () -> Void,
         onFavorite: @escaping (Bool) -> Void = { _ in },
-        isFavorite: Bool = false
+        isFavorite: Bool = false,
+        showFavoriteButton: Bool = true
     ) -> DishDetailView {
         DishDetailView(
             dish: dish, 
             onClose: onClose, 
             onFavorite: onFavorite, 
-            isFavorite: isFavorite
+            isFavorite: isFavorite,
+            showFavoriteButton: showFavoriteButton
         )
     }
 }
@@ -641,6 +647,7 @@ struct VisualEffectBlurViewmacOS: NSViewRepresentable {
         ),
         onClose: {},
         onFavorite: { _ in },
-        isFavorite: false
+        isFavorite: false,
+        showFavoriteButton: true
     )
 }
