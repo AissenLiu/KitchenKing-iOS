@@ -11,7 +11,7 @@ import StoreKit
 struct SettingsView: View {
     @Environment(\.dismiss) private var dismiss
     @ObservedObject var appState: AppState
-    @State private var showingSubscription = false
+    @State private var showingPurchase = false
     
     var body: some View {
         NavigationView {
@@ -50,8 +50,8 @@ struct SettingsView: View {
                     .foregroundColor(.black)
                 }
             }
-            .sheet(isPresented: $showingSubscription) {
-                SubscriptionView(appState: appState)
+            .sheet(isPresented: $showingPurchase) {
+                PurchaseView(appState: appState)
             }
         }
     }
@@ -64,30 +64,30 @@ struct SettingsView: View {
             HStack(spacing: 16) {
                 ZStack {
                     Rectangle()
-                        .fill(appState.isSubscribed ? Color.yellow.opacity(0.2) : Color.gray.opacity(0))
+                        .fill(appState.isPurchased ? Color.yellow.opacity(0.2) : Color.gray.opacity(0))
                         .frame(width: 60, height: 60)
                     
-                    Image(systemName: appState.isSubscribed ? "crown.fill" : "crown")
+                    Image(systemName: appState.isPurchased ? "crown.fill" : "crown")
                         .font(.system(size: 28, weight: .bold))
-                        .foregroundColor(appState.isSubscribed ? .yellow : .gray)
+                        .foregroundColor(appState.isPurchased ? .yellow : .gray)
                 }
                 
                 VStack(alignment: .leading, spacing: 6) {
-                    Text(appState.isSubscribed ? "高级版用户" : "免费用户")
+                    Text(appState.isPurchased ? "高级版用户" : "免费用户")
                         .font(.system(size: 20, weight: .bold))
                         .foregroundColor(.black)
                     
-                    Text(appState.isSubscribed ? "已解锁所有功能" : "有限制使用")
+                    Text(appState.isPurchased ? "已解锁所有功能" : "有限制使用")
                         .font(.system(size: 14, weight: .medium))
-                        .foregroundColor(appState.isSubscribed ? .green : .orange)
+                        .foregroundColor(appState.isPurchased ? .green : .orange)
                 }
                 
                 Spacer()
             }
             
             // 升级按钮（非会员用户显示）
-            if !appState.isSubscribed {
-                Button(action: { showingSubscription = true }) {
+            if !appState.isPurchased {
+                Button(action: { showingPurchase = true }) {
                     HStack {
                         Text("获取高级版")
                             .fontWeight(.semibold)
@@ -280,13 +280,13 @@ struct SettingsView: View {
                 
                 Spacer()
                 
-                Text(appState.isSubscribed ? "∞" : "\(appState.remainingGenerations)")
+                Text(appState.isPurchased ? "∞" : "\(appState.remainingGenerations)")
                     .font(.system(size: 18, weight: .bold))
-                    .foregroundColor(appState.remainingGenerations <= 1 && !appState.isSubscribed ? .red : .black)
+                    .foregroundColor(appState.remainingGenerations <= 1 && !appState.isPurchased ? .red : .black)
             }
             
-            // 订阅类型（会员用户显示）
-            if appState.isSubscribed, let subscriptionType = appState.subscriptionType {
+            // 购买版本（高级版用户显示）
+            if appState.isPurchased, let purchaseType = appState.purchaseType {
                 Rectangle()
                     .fill(.black)
                     .frame(height: 1)
@@ -309,10 +309,10 @@ struct SettingsView: View {
                         }
                         
                         VStack(alignment: .leading, spacing: 2) {
-                            Text("订阅类型")
+                            Text("版本信息")
                                 .font(.system(size: 16, weight: .medium))
                                 .foregroundColor(.black)
-                            Text("当前套餐")
+                            Text("已购买版本")
                                 .font(.system(size: 12))
                                 .foregroundColor(.gray)
                         }
@@ -320,7 +320,7 @@ struct SettingsView: View {
                     
                     Spacer()
                     
-                    Text(subscriptionType.description)
+                    Text(purchaseType.rawValue)
                         .font(.system(size: 14, weight: .medium))
                         .foregroundColor(.purple)
                         .padding(.horizontal, 12)
@@ -476,11 +476,11 @@ struct SettingsView: View {
 
 
 
-// MARK: - 订阅视图
-struct SubscriptionView: View {
+// MARK: - 购买视图
+struct PurchaseView: View {
     @Environment(\.dismiss) private var dismiss
     @ObservedObject var appState: AppState
-    @State private var selectedSubscription: SubscriptionType = .monthly
+    @State private var selectedPurchase: PurchaseType = .premium
     @State private var isProcessing = false
     
     var body: some View {
@@ -498,10 +498,10 @@ struct SubscriptionView: View {
                         // 会员特权卡片
                         featuresCard
                         
-                        // 订阅选项
-                        subscriptionOptions
+                        // 购买选项
+                        purchaseOptions
                         
-                        // 订阅按钮
+                        // 购买按钮
                         subscribeButton
                     }
                     .padding(.horizontal, 20)
@@ -509,7 +509,7 @@ struct SubscriptionView: View {
                     .padding(.bottom, 40)
                 }
             }
-            .navigationTitle("会员订阅")
+            .navigationTitle("升级到高级版")
             .navigationBarTitleDisplayMode(.large)
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
@@ -527,24 +527,20 @@ struct SubscriptionView: View {
         VStack(spacing: 20) {
             ZStack {
                 Rectangle()
-                    .fill(Color.yellow.opacity(0.2))
+                    .fill(Color.yellow.opacity(0))
                     .frame(width: 100, height: 100)
-                    .overlay(
-                        Rectangle()
-                            .stroke(.black, lineWidth: 3)
-                    )
                 
                 Image(systemName: "crown.fill")
                     .font(.system(size: 50, weight: .bold))
-                    .foregroundColor(.yellow)
+                    .foregroundColor(.black)
             }
             
             VStack(spacing: 12) {
-                Text("升级到会员")
+                Text("升级到高级版")
                     .font(.system(size: 28, weight: .black))
                     .foregroundColor(.black)
                 
-                Text("解锁无限生成和所有高级功能")
+                Text("一次性购买，永久享受所有功能")
                     .font(.system(size: 16))
                     .foregroundColor(.gray)
                     .multilineTextAlignment(.center)
@@ -576,17 +572,17 @@ struct SubscriptionView: View {
         )
     }
     
-    private var subscriptionOptions: some View {
+    private var purchaseOptions: some View {
         VStack(spacing: 16) {
             HStack {
-                Text("选择订阅计划")
+                Text("高级版功能")
                     .font(.system(size: 20, weight: .bold))
                     .foregroundColor(.black)
                 Spacer()
             }
             
             VStack(spacing: 12) {
-                ForEach(SubscriptionType.allCases, id: \.self) { type in
+                ForEach(PurchaseType.allCases, id: \.self) { type in
                     modernSubscriptionOption(type: type)
                 }
             }
@@ -602,7 +598,7 @@ struct SubscriptionView: View {
                         .scaleEffect(0.9)
                 } else {
                     Image(systemName: "star.fill")
-                    Text("立即订阅")
+                    Text("立即购买")
                         .font(.system(size: 18, weight: .bold))
                 }
             }
@@ -625,11 +621,7 @@ struct SubscriptionView: View {
                 Rectangle()
                     .fill(iconColor.opacity(0.1))
                     .frame(width: 40, height: 40)
-                    .overlay(
-                        Rectangle()
-                            .stroke(.black, lineWidth: 1)
-                    )
-                
+   
                 Image(systemName: icon)
                     .font(.system(size: 20, weight: .bold))
                     .foregroundColor(iconColor)
@@ -649,8 +641,8 @@ struct SubscriptionView: View {
         }
     }
     
-    private func modernSubscriptionOption(type: SubscriptionType) -> some View {
-        Button(action: { selectedSubscription = type }) {
+    private func modernSubscriptionOption(type: PurchaseType) -> some View {
+        Button(action: { selectedPurchase = type }) {
             HStack(spacing: 16) {
                 VStack(alignment: .leading, spacing: 8) {
                     HStack(spacing: 8) {
@@ -658,59 +650,73 @@ struct SubscriptionView: View {
                             .font(.system(size: 18, weight: .bold))
                             .foregroundColor(.black)
                         
-                        if let firstMonthPrice = type.firstMonthPrice {
-                            Text("首月¥\(String(format: "%.2f", firstMonthPrice))")
-                                .font(.system(size: 12, weight: .medium))
-                                .foregroundColor(.white)
-                                .padding(.horizontal, 8)
-                                .padding(.vertical, 2)
-                                .background(.red)
-                        }
+                        Text("一次性购买")
+                            .font(.system(size: 12, weight: .medium))
+                            .foregroundColor(.white)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 2)
+                            .background(.green)
                     }
                     
                     Text("¥\(String(format: "%.2f", type.price))")
                         .font(.system(size: 24, weight: .black))
-                        .foregroundColor(selectedSubscription == type ? .white : .black)
+                        .foregroundColor(.black)
                     
-                    Text(type.savings)
+                    Text(type.features)
                         .font(.system(size: 12, weight: .medium))
-                        .foregroundColor(selectedSubscription == type ? .white : .green)
+                        .foregroundColor(.green)
                 }
                 
                 Spacer()
                 
                 ZStack {
                     Circle()
-                        .fill(selectedSubscription == type ? Color.white : Color.clear)
+                        .fill(selectedPurchase == type ? Color.blue : Color.clear)
                         .frame(width: 24, height: 24)
                         .overlay(
                             Circle()
-                                .stroke(selectedSubscription == type ? .white : .black, lineWidth: 2)
+                                .stroke(.black, lineWidth: 2)
                         )
                     
-                    if selectedSubscription == type {
+                    if selectedPurchase == type {
                         Image(systemName: "checkmark")
                             .font(.system(size: 12, weight: .bold))
-                            .foregroundColor(.black)
+                            .foregroundColor(.white)
                     }
                 }
             }
             .padding(20)
-            .background(selectedSubscription == type ? .black : .white)
+            .background(
+                selectedPurchase == type ? 
+                LinearGradient(
+                    gradient: Gradient(colors: [Color.blue.opacity(0.1), Color.purple.opacity(0.1)]),
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                ) : LinearGradient(
+                    gradient: Gradient(colors: [Color.white, Color.white]),
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+            )
             .overlay(
                 Rectangle()
                     .stroke(.black, lineWidth: 2)
             )
+            
         }
         .buttonStyle(PlainButtonStyle())
     }
     
     private func subscribe() {
+        purchase()
+    }
+    
+    private func purchase() {
         isProcessing = true
         
-        // 模拟订阅处理
+        // 模拟购买处理
         DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
-            appState.subscribe(selectedSubscription)
+            appState.purchase(selectedPurchase)
             isProcessing = false
             dismiss()
         }

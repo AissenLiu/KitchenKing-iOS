@@ -36,7 +36,7 @@ struct IngredientInputView: View {
                     // 垂直堆栈布局，间距 16 点
                     VStack(spacing: 16) {
                         // 剩余次数显示
-                        if !appState.isSubscribed {
+                        if !appState.isPurchased {
                             HStack {
                                 Image(systemName: "bolt.fill")
                                     .foregroundColor(.orange)
@@ -49,8 +49,8 @@ struct IngredientInputView: View {
                                 Spacer()
                                 
                                 if appState.remainingGenerations <= 1 {
-                                    Button("升级会员") {
-                                        appState.showSubscriptionSheet = true
+                                    Button("升级高级版") {
+                                        appState.showPurchaseSheet = true
                                     }
                                     .font(.caption)
                                     .foregroundColor(.blue)

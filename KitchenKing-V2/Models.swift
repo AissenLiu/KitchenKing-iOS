@@ -10,46 +10,26 @@ import SwiftUI
 
 // MARK: - 订阅相关模型
 
-enum SubscriptionType: String, CaseIterable, Codable {
-    case monthly = "月度"
-    case quarterly = "季度"
-    case yearly = "年度"
+enum PurchaseType: String, CaseIterable, Codable {
+    case premium = "高级版"
     
     var price: Double {
         switch self {
-        case .monthly: return 6.9
-        case .quarterly: return 19.9
-        case .yearly: return 69.0
-        }
-    }
-    
-    var firstMonthPrice: Double? {
-        switch self {
-        case .monthly: return 1.9
-        case .quarterly: return nil
-        case .yearly: return nil
+        case .premium: return 39.9
         }
     }
     
     var description: String {
         switch self {
-        case .monthly:
-            return "月度订阅 - 首月\(String(format: "%.2f", firstMonthPrice ?? 0))元，续费\(String(format: "%.2f", price))元"
-        case .quarterly:
-            return "季度订阅 - \(String(format: "%.2f", price))元/季度"
-        case .yearly:
-            return "年度订阅 - \(String(format: "%.2f", price))元/年"
+        case .premium:
+            return "一次性购买 - 永久解锁所有功能"
         }
     }
     
-    var savings: String {
+    var features: String {
         switch self {
-        case .monthly:
-            return "灵活订阅"
-        case .quarterly:
-            return "节省5%"
-        case .yearly:
-            return "节省17%"
+        case .premium:
+            return "无限生成·会员角色·无限收藏·自定义角色"
         }
     }
 }
@@ -141,42 +121,22 @@ struct ChefRole: Identifiable, Codable {
     
     static let premiumRoles: [ChefRole] = [
         ChefRole(
-            name: "米其林大厨",
-            title: "米其林三星主厨",
-            specialty: "高端法餐",
-            personality: "追求完美",
-            cookingStyle: "精致优雅",
-            imageName: "法国菜",
+            name: "寿司大师",
+            title: "日式料理专家",
+            specialty: "日本料理",
+            personality: "精益求精",
+            cookingStyle: "简约精致",
+            imageName: "日本料理",
             isPremium: true,
             isCustom: false
         ),
         ChefRole(
-            name: "家常菜专家",
-            title: "家常菜大师",
-            specialty: "家常小炒",
-            personality: "亲切温暖",
-            cookingStyle: "传统地道",
-            imageName: "川菜",
-            isPremium: true,
-            isCustom: false
-        ),
-        ChefRole(
-            name: "营养师",
-            title: "高级营养师",
-            specialty: "健康饮食",
-            personality: "科学严谨",
-            cookingStyle: "营养均衡",
-            imageName: "粤菜",
-            isPremium: true,
-            isCustom: false
-        ),
-        ChefRole(
-            name: "创意料理师",
-            title: "创意料理达人",
-            specialty: "融合创新",
-            personality: "天马行空",
-            cookingStyle: "新潮独特",
-            imageName: "泰国菜",
+            name: "意式厨神",
+            title: "意大利菜大师",
+            specialty: "意大利菜",
+            personality: "热情浪漫",
+            cookingStyle: "经典传统",
+            imageName: "意大利菜",
             isPremium: true,
             isCustom: false
         )
@@ -303,11 +263,11 @@ class AppState: ObservableObject {
     // 音频管理器
     let audioManager = AudioManager.shared
     
-    // 订阅相关
-    @Published var isSubscribed = false
-    @Published var subscriptionType: SubscriptionType?
+    // 购买相关
+    @Published var isPurchased = false
+    @Published var purchaseType: PurchaseType?
     @Published var remainingGenerations = 3 // 免费用户剩余生成次数
-    @Published var showSubscriptionSheet = false
+    @Published var showPurchaseSheet = false
     @Published var showSettingsSheet = false
     
     // 收藏相关
@@ -432,6 +392,42 @@ class AppState: ObservableObject {
                 "大叔秘制，独家配方！",
                 "俄罗斯传统，世代传承！"
             ]
+        ),
+        Cuisine(
+            name: "日本料理",
+            imageName: "日本料理",
+            color: "text-pink-600",
+            chefName: "千春师傅",
+            completedMessages: [
+                "いただきます！请享用！",
+                "新鲜出炉，味道一流！",
+                "职人手艺，匠心独运！",
+                "和风料理，清淡雅致！",
+                "刺身新鲜，入口即化！",
+                "日式精髓，完美呈现！",
+                "寿司之道，精益求精！",
+                "料亭级别的享受！",
+                "师傅亲制，品质保证！",
+                "道地日式，原汁原味！"
+            ]
+        ),
+        Cuisine(
+            name: "意大利菜",
+            imageName: "意大利菜",
+            color: "text-emerald-600",
+            chefName: "Sofia大厨",
+            completedMessages: [
+                "Buon appetito！好胃口！",
+                "正宗意式，浓香扑鼻！",
+                "Mamma mia，太美味了！",
+                "意大利面的灵魂！",
+                "地中海的阳光味道！",
+                "Perfetto，完美！",
+                "家族秘方，传承百年！",
+                "意式风情，浪漫满溢！",
+                "Marco大厨招牌菜！",
+                "意大利之味，纯正经典！"
+            ]
         )
     ]
     
@@ -523,26 +519,26 @@ class AppState: ObservableObject {
         }
     }
     
-    // MARK: - 订阅相关方法
+    // MARK: - 购买相关方法
     
-    func subscribe(_ type: SubscriptionType) {
-        isSubscribed = true
-        subscriptionType = type
+    func purchase(_ type: PurchaseType) {
+        isPurchased = true
+        purchaseType = type
         remainingGenerations = -1 // 无限生成
     }
     
-    func unsubscribe() {
-        isSubscribed = false
-        subscriptionType = nil
+    func resetPurchase() {
+        isPurchased = false
+        purchaseType = nil
         remainingGenerations = 3 // 重置为免费用户额度
     }
     
     func canGenerate() -> Bool {
-        return isSubscribed || remainingGenerations > 0
+        return isPurchased || remainingGenerations > 0
     }
     
     func useGeneration() {
-        if !isSubscribed && remainingGenerations > 0 {
+        if !isPurchased && remainingGenerations > 0 {
             remainingGenerations -= 1
         }
     }
@@ -712,7 +708,7 @@ class AppState: ObservableObject {
     
     func getAvailableChefRoles() -> [ChefRole] {
         var roles: [ChefRole] = ChefRole.freeRoles
-        if isSubscribed {
+        if isPurchased {
             roles.append(contentsOf: ChefRole.premiumRoles)
             roles.append(contentsOf: customChefRoles)
         }

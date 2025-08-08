@@ -71,7 +71,7 @@ struct ChefRoleManagementView: View {
     
     private var premiumRolesSection: some View {
         Group {
-            if appState.isSubscribed {
+            if appState.isPurchased {
                 subscribedPremiumRolesSection
             } else {
                 unsubscribedPremiumRolesSection
@@ -93,9 +93,10 @@ struct ChefRoleManagementView: View {
                 )
             }
             
-            if ChefRole.premiumRoles.count < 8 {
-                addPremiumRoleButton
-            }
+            // 由于目前只有2个会员角色，暂时不显示添加按钮
+            // if ChefRole.premiumRoles.count < 2 {
+            //     addPremiumRoleButton
+            // }
         }
     }
     
@@ -119,7 +120,7 @@ struct ChefRoleManagementView: View {
     
     private var customRolesSection: some View {
         Group {
-            if appState.isSubscribed {
+            if appState.isPurchased {
                 Section("自定义角色") {
                     ForEach(appState.customChefRoles, id: \.id) { role in
                         ChefRoleCardView(
@@ -260,7 +261,7 @@ struct PremiumRoleAddView: View {
     var body: some View {
         NavigationView {
             VStack(spacing: 20) {
-                if appState.isSubscribed {
+                if appState.isPurchased {
                     // 已订阅，显示添加角色选项
                     VStack(spacing: 16) {
                         Image(systemName: "crown.fill")
@@ -303,7 +304,7 @@ struct PremiumRoleAddView: View {
                             .foregroundColor(.gray)
                         
                         VStack(alignment: .leading, spacing: 8) {
-                            FeatureText(icon: "crown.fill", text: "4个会员专属角色")
+                            FeatureText(icon: "crown.fill", text: "2个会员专属角色")
                             FeatureText(icon: "star.fill", text: "自定义角色创建")
                             FeatureText(icon: "infinity", text: "无限生成菜品")
                         }

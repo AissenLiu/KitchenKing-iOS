@@ -140,8 +140,8 @@ struct ContentView: View {
                 FavoritesView(appState: appState)
             }
             
-            .sheet(isPresented: $appState.showSubscriptionSheet) {
-                SubscriptionView(appState: appState)
+            .sheet(isPresented: $appState.showPurchaseSheet) {
+                PurchaseView(appState: appState)
             }
             
             .onAppear {
@@ -165,7 +165,7 @@ struct ContentView: View {
         guard !ingredients.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
         
         guard self.appState.canGenerate() else {
-            self.appState.showSubscriptionSheet = true
+            self.appState.showPurchaseSheet = true
             return
         }
         
