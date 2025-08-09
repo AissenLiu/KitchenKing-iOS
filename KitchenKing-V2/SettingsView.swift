@@ -279,7 +279,7 @@ struct SettingsView: View {
                         Text("剩余生成次数")
                             .font(.system(size: 16, weight: .medium))
                             .foregroundColor(.black)
-                        if appState.isPurchased, let purchaseType = appState.purchaseType {
+                        if appState.isPurchased, let _ = appState.purchaseType {
                             Text("无限次数使用")
                                 .font(.system(size: 12))
                                 .foregroundColor(.gray)
@@ -633,6 +633,8 @@ struct PurchaseView: View {
     @Environment(\.dismiss) private var dismiss
     @ObservedObject var appState: AppState
     @State private var isProcessing = false
+    @State private var showingAlert = false
+    @State private var alertMessage = ""
     
     var body: some View {
         NavigationView {
@@ -651,6 +653,9 @@ struct PurchaseView: View {
                         
                         // 购买选项和按钮合并
                         combinedPurchaseSection
+                        
+                        // 底部辅助功能
+                        bottomActionsSection
                     }
                     .padding(.horizontal, 20)
                     .padding(.bottom, 40)
@@ -665,6 +670,11 @@ struct PurchaseView: View {
                     .font(.system(size: 16, weight: .medium))
                     .foregroundColor(.black)
                 }
+            }
+            .alert("提示", isPresented: $showingAlert) {
+                Button("确定", role: .cancel) { }
+            } message: {
+                Text(alertMessage)
             }
         }
     }
@@ -795,6 +805,33 @@ struct PurchaseView: View {
         )
     }
     
+    private var bottomActionsSection: some View {
+        VStack(spacing: 16) {
+            HStack(spacing: 20) {
+                // 恢复购买按钮
+                Button(action: restorePurchases) {
+                    Text("恢复购买")
+                        .font(.system(size: 16, weight: .medium))
+                        .foregroundColor(.blue)
+                }
+                .frame(maxWidth: .infinity)
+                
+                Rectangle()
+                    .fill(Color.gray.opacity(0.3))
+                    .frame(width: 1, height: 20)
+                
+                // 兑换优惠按钮
+                Button(action: redeemCode_action) {
+                    Text("兑换优惠")
+                        .font(.system(size: 16, weight: .medium))
+                        .foregroundColor(.blue)
+                }
+                .frame(maxWidth: .infinity)
+            }
+            .padding(.vertical, 16)
+        }
+    }
+    
     
     private func featureRow(icon: String, iconColor: Color, title: String, description: String) -> some View {
         HStack(spacing: 16) {
@@ -830,11 +867,87 @@ struct PurchaseView: View {
     private func purchase() {
         isProcessing = true
         
-        // 模拟购买处理
-        DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
-            appState.purchase(.premium)
-            isProcessing = false
-            dismiss()
+        Task {
+            let success = await appState.purchaseProduct()
+            
+            DispatchQueue.main.async {
+                self.isProcessing = false
+                
+                if success {
+                    self.dismiss()
+                } else {
+                    if let errorMessage = self.appState.getStoreKitErrorMessage() {
+                        self.alertMessage = errorMessage
+                    } else {
+                        self.alertMessage = "购买失败，请稍后重试。"
+                    }
+                    self.showingAlert = true
+                }
+            }
+        }
+    }
+    
+    private func restorePurchases() {
+        // 检查用户是否已经购买过
+        if appState.isPurchased {
+            alertMessage = "您已经是高级版用户，无需恢复购买。"
+            showingAlert = true
+            return
+        }
+        
+        Task {
+            let success = await appState.restorePurchases()
+            
+            DispatchQueue.main.async {
+                if success {
+                    self.alertMessage = "恢复购买成功！您已获得高级版权限。"
+                    self.showingAlert = true
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
+                        self.dismiss()
+                    }
+                } else {
+                    if let errorMessage = self.appState.getStoreKitErrorMessage() {
+                        self.alertMessage = errorMessage
+                    } else {
+                        self.alertMessage = "未找到购买记录，请确保您使用的是购买时的Apple ID。"
+                    }
+                    self.showingAlert = true
+                }
+            }
+        }
+    }
+    
+    private func redeemCode_action() {
+        Task {
+            // 检查用户是否已经是高级版用户
+            if appState.isPurchased {
+                DispatchQueue.main.async {
+                    self.alertMessage = "您已经是高级版用户，无需兑换优惠码。"
+                    self.showingAlert = true
+                }
+                return
+            }
+            
+            let success = await appState.redeemPromoCode()
+            
+            DispatchQueue.main.async {
+                if success {
+                    self.alertMessage = "兑换成功！您已获得高级版权限。"
+                    self.showingAlert = true
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
+                        self.dismiss()
+                    }
+                } else {
+                    // 兑换失败或被用户取消
+                    if let errorMessage = self.appState.getStoreKitErrorMessage() {
+                        self.alertMessage = errorMessage
+                        self.showingAlert = true
+                    } else {
+                        // 用户可能取消了兑换，不显示错误信息
+                        print("用户取消了优惠码兑换操作")
+                    }
+                }
+            }
         }
     }
 }

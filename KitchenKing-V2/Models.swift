@@ -313,6 +313,9 @@ class AppState: ObservableObject {
     @Published var showPurchaseSheet = false
     @Published var showSettingsSheet = false
     
+    // StoreKit管理器
+    let storeKitManager = StoreKitManager.shared
+    
     // 收藏相关
     @Published var favoriteDishes: [Dish] = []
     @Published var showFavoritesSheet = false
@@ -578,16 +581,93 @@ class AppState: ObservableObject {
     
     // MARK: - 购买相关方法
     
+    // 检查购买状态
+    @MainActor
+    private func checkPurchaseStatus() {
+        isPurchased = storeKitManager.isPurchased("com.kitchenking.premium")
+        if isPurchased {
+            purchaseType = .premium
+            remainingGenerations = -1
+        }
+    }
+    
+    // 设置购买状态监听
+    private func setupPurchaseStatusObserver() {
+        // 监听StoreKit管理器的购买状态变化
+        Task {
+            for await _ in await storeKitManager.$purchasedProducts.values {
+                await MainActor.run {
+                    self.checkPurchaseStatus()
+                }
+            }
+        }
+    }
+    
     func purchase(_ type: PurchaseType) {
         isPurchased = true
         purchaseType = type
         remainingGenerations = -1 // 无限生成
     }
     
+    // 真正的购买方法
+    @MainActor
+    func purchaseProduct() async -> Bool {
+        print("🛒 AppState: 开始购买高级版...")
+        print("📋 AppState: 当前购买状态: isPurchased=\(isPurchased)")
+        
+        guard let product = storeKitManager.getProduct(for: "com.kitchenking.premium") else {
+            print("❌ AppState: 产品不可用 - 无法找到com.kitchenking.premium")
+            print("📦 AppState: 当前可用产品数量: \(storeKitManager.products.count)")
+            return false
+        }
+        
+        print("✅ AppState: 找到产品，开始调用StoreKit购买...")
+        let success = await storeKitManager.purchase(product)
+        
+        if success {
+            print("✅ AppState: StoreKit购买成功，更新应用状态...")
+            purchase(.premium)
+            print("✅ AppState: 应用状态已更新为高级版用户")
+        } else {
+            print("❌ AppState: StoreKit购买失败")
+            if let errorMessage = storeKitManager.errorMessage {
+                print("❌ AppState: 错误信息: \(errorMessage)")
+            }
+        }
+        
+        return success
+    }
+    
     func resetPurchase() {
         isPurchased = false
         purchaseType = nil
         remainingGenerations = 3 // 重置为免费用户额度
+    }
+    
+    // 恢复购买功能
+    func restorePurchases() async -> Bool {
+        let success = await storeKitManager.restorePurchases()
+        if success {
+            await checkPurchaseStatus()
+            print("✅ 恢复购买成功")
+        }
+        return success
+    }
+    
+    // 兑换优惠码
+    func redeemPromoCode() async -> Bool {
+        let success = await storeKitManager.presentCodeRedemptionSheet()
+        if success {
+            await checkPurchaseStatus()
+            print("✅ 兑换成功")
+        }
+        return success
+    }
+    
+    // 获取StoreKit错误信息
+    @MainActor
+    func getStoreKitErrorMessage() -> String? {
+        return storeKitManager.errorMessage
     }
     
     func canGenerate() -> Bool {
@@ -615,6 +695,12 @@ class AppState: ObservableObject {
         
         loadFavorites()
         setupCloudKitSync()
+        
+        // 检查购买状态和监听购买状态变化
+        Task {
+            await checkPurchaseStatus()
+        }
+        setupPurchaseStatusObserver()
     }
     
     // 设置 CloudKit 同步

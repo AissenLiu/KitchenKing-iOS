@@ -6,6 +6,10 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		601630A52E4789B6009CC487 /* StoreKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 601630A42E4789B6009CC487 /* StoreKit.framework */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXContainerItemProxy section */
 		603FE32E2E3F09BE000BB209 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -24,6 +28,7 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		601630A42E4789B6009CC487 /* StoreKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = StoreKit.framework; path = System/Library/Frameworks/StoreKit.framework; sourceTree = SDKROOT; };
 		603FE3202E3F09BC000BB209 /* KitchenKing-V2.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "KitchenKing-V2.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		603FE32D2E3F09BE000BB209 /* KitchenKing-V2Tests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "KitchenKing-V2Tests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
 		603FE3372E3F09BE000BB209 /* KitchenKing-V2UITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "KitchenKing-V2UITests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -52,6 +57,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				601630A52E4789B6009CC487 /* StoreKit.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -72,12 +78,21 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		601630A32E4789B6009CC487 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				601630A42E4789B6009CC487 /* StoreKit.framework */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
 		603FE3172E3F09BC000BB209 = {
 			isa = PBXGroup;
 			children = (
 				603FE3222E3F09BC000BB209 /* KitchenKing-V2 */,
 				603FE3302E3F09BE000BB209 /* KitchenKing-V2Tests */,
 				603FE33A2E3F09BE000BB209 /* KitchenKing-V2UITests */,
+				601630A32E4789B6009CC487 /* Frameworks */,
 				603FE3212E3F09BC000BB209 /* Products */,
 			);
 			sourceTree = "<group>";
