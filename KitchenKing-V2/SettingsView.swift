@@ -27,14 +27,21 @@ struct SettingsView: View {
                         
                         // 功能区域
                         VStack(spacing: 16) {
-                            chefRoleCard
+                            //chefRoleCard
                             favoritesCard
                             cloudSyncCard
                             accountInfoCard
                         }
                         
-                        // 关于区域
-                        aboutSection
+                        // 版本信息区域
+                        versionInfoSection
+                        
+                        // 后续计划区域
+                        futurePlansSection
+                        
+                        // 关于我们区域
+                        aboutUsSection
+                        
                     }
                     .padding(.horizontal, 20)
                     .padding(.bottom, 30)
@@ -64,10 +71,10 @@ struct SettingsView: View {
             HStack(spacing: 16) {
                 ZStack {
                     Rectangle()
-                        .fill(appState.isPurchased ? Color.yellow.opacity(0.2) : Color.gray.opacity(0))
+                        .fill(appState.isPurchased ? Color.yellow.opacity(0) : Color.gray.opacity(0))
                         .frame(width: 60, height: 60)
                     
-                    Image(systemName: appState.isPurchased ? "crown.fill" : "crown")
+                    Image(systemName: appState.isPurchased ? "cup.and.saucer.fill" : "cup.and.saucer.fill")
                         .font(.system(size: 28, weight: .bold))
                         .foregroundColor(appState.isPurchased ? .yellow : .gray)
                 }
@@ -77,9 +84,9 @@ struct SettingsView: View {
                         .font(.system(size: 20, weight: .bold))
                         .foregroundColor(.black)
                     
-                    Text(appState.isPurchased ? "已解锁所有功能" : "有限制使用")
+                    Text(appState.isPurchased ? "已解锁所有功能" : "获取高级版解锁全部功能")
                         .font(.system(size: 14, weight: .medium))
-                        .foregroundColor(appState.isPurchased ? .green : .orange)
+                        .foregroundColor(.gray)
                 }
                 
                 Spacer()
@@ -268,13 +275,19 @@ struct SettingsView: View {
                             .foregroundColor(.green)
                     }
                     
-                    VStack(alignment: .leading, spacing: 2) {
+                    VStack(alignment: .leading, spacing: 4) {
                         Text("剩余生成次数")
                             .font(.system(size: 16, weight: .medium))
                             .foregroundColor(.black)
-                        Text("每日可用次数")
-                            .font(.system(size: 12))
-                            .foregroundColor(.gray)
+                        if appState.isPurchased, let purchaseType = appState.purchaseType {
+                            Text("无限次数使用")
+                                .font(.system(size: 12))
+                                .foregroundColor(.gray)
+                        } else {
+                            Text("免费用户可以体验 3 次")
+                                .font(.system(size: 12))
+                                .foregroundColor(.gray)
+                        }
                     }
                 }
                 
@@ -283,54 +296,6 @@ struct SettingsView: View {
                 Text(appState.isPurchased ? "∞" : "\(appState.remainingGenerations)")
                     .font(.system(size: 18, weight: .bold))
                     .foregroundColor(appState.remainingGenerations <= 1 && !appState.isPurchased ? .red : .black)
-            }
-            
-            // 购买版本（高级版用户显示）
-            if appState.isPurchased, let purchaseType = appState.purchaseType {
-                Rectangle()
-                    .fill(.black)
-                    .frame(height: 1)
-                    .opacity(0.1)
-                
-                HStack {
-                    HStack(spacing: 12) {
-                        ZStack {
-                            Rectangle()
-                                .fill(Color.purple.opacity(0.1))
-                                .frame(width: 40, height: 40)
-                                .overlay(
-                                    Rectangle()
-                                        .stroke(.black, lineWidth: 1)
-                                )
-                            
-                            Image(systemName: "star.circle.fill")
-                                .font(.system(size: 18, weight: .bold))
-                                .foregroundColor(.purple)
-                        }
-                        
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text("版本信息")
-                                .font(.system(size: 16, weight: .medium))
-                                .foregroundColor(.black)
-                            Text("已购买版本")
-                                .font(.system(size: 12))
-                                .foregroundColor(.gray)
-                        }
-                    }
-                    
-                    Spacer()
-                    
-                    Text(purchaseType.rawValue)
-                        .font(.system(size: 14, weight: .medium))
-                        .foregroundColor(.purple)
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 6)
-                        .background(Color.purple.opacity(0.1))
-                        .overlay(
-                            Rectangle()
-                                .stroke(Color.purple, lineWidth: 1)
-                        )
-                }
             }
         }
         .padding(20)
@@ -341,41 +306,71 @@ struct SettingsView: View {
         )
     }
     
-    private var aboutSection: some View {
+    private var versionInfoSection: some View {
         VStack(spacing: 16) {
             // 标题
             HStack {
-                Text("关于")
-                    .font(.system(size: 18, weight: .bold))
+                Text("最新版本 1.0.0")
+                    .font(.system(size: 14, weight: .light))
                     .foregroundColor(.black)
                 Spacer()
             }
             
-            VStack(spacing: 12) {
-                // 版本信息
-                aboutRow(icon: "info.circle.fill", iconColor: .blue, title: "版本", value: "1.0.0")
-                
-                Rectangle()
-                    .fill(.black)
-                    .frame(height: 0.5)
-                    .opacity(0.2)
-                
-                // 隐私政策
-                Link(destination: URL(string: "https://example.com/privacy")!) {
-                    aboutRow(icon: "lock.shield.fill", iconColor: .green, title: "隐私政策", showArrow: true)
+            HStack(spacing: 12) {
+                VStack(){
+                    HStack(){
+                        ZStack {
+                            Rectangle()
+                                .fill(Color.green.opacity(0))
+                                .frame(width: 50, height: 50)
+                            
+                            Image(systemName: "doc.text.fill")
+                                .font(.system(size: 18, weight: .bold))
+                                .foregroundColor(.green)
+                        }
+                        
+                        VStack(alignment: .leading, spacing: 4) {
+                            
+                            Text("内测期间享受早鸟价")
+                                .font(.system(size: 16, weight: .medium))
+                                .foregroundColor(.black)
+                            Text("后续增加功能后陆续恢复到原价")
+                                .font(.system(size: 12))
+                                .foregroundColor(.gray)
+                        }
+                        Spacer()
+                    }
+
+                    Rectangle()
+                        .fill(.black)
+                        .frame(height: 0.5)
+                        .opacity(0.2)
+                    
+                    HStack(){
+                        ZStack {
+                            Rectangle()
+                                .fill(Color.green.opacity(0))
+                                .frame(width: 50, height: 50)
+                            
+                            Image(systemName: "doc.text.fill")
+                                .font(.system(size: 18, weight: .bold))
+                                .foregroundColor(.green)
+                        }
+                        
+                        VStack(alignment: .leading, spacing: 2) {
+                            
+                            Text("不用等，首版直接上线女厨师")
+                                .font(.system(size: 16, weight: .medium))
+                                .foregroundColor(.black)
+                            Text("增加日本料理，意大利菜系的女厨师")
+                                .font(.system(size: 12))
+                                .foregroundColor(.gray)
+
+                        }
+                        Spacer()
+                    }
                 }
-                .buttonStyle(PlainButtonStyle())
                 
-                Rectangle()
-                    .fill(.black)
-                    .frame(height: 0.5)
-                    .opacity(0.2)
-                
-                // 用户协议
-                Link(destination: URL(string: "https://example.com/terms")!) {
-                    aboutRow(icon: "doc.text.fill", iconColor: .orange, title: "用户协议", showArrow: true)
-                }
-                .buttonStyle(PlainButtonStyle())
             }
             .padding(20)
             .background(.white)
@@ -384,6 +379,163 @@ struct SettingsView: View {
                     .stroke(.black, lineWidth: 1)
             )
         }
+    }
+    
+    private var aboutUsSection: some View {
+        VStack(spacing: 16) {
+            // 标题
+            HStack {
+                Text("关于我们")
+                    .font(.system(size: 14, weight: .light))
+                    .foregroundColor(.black)
+                Spacer()
+            }
+            
+            // 横向两个信息布局
+            HStack(spacing: 12) {
+                // Redbook 链接
+                Button(action: {
+                    if let url = URL(string: "https://www.xiaohongshu.com/user/profile/5e4576a6000000000100a83f?xsec_token=YBmIZjb-UvgzZquoEv3v5AZA6oGlJfSjO8YBepdpjjJ3Q=&xsec_source=app_share&xhsshare=CopyLink&appuid=5e4576a6000000000100a83f&apptime=1754708486&share_id=5130f88621a14a0392fb63c293186180") {
+                        UIApplication.shared.open(url)
+                    }
+                }) {
+                    HStack(spacing: 12) {
+                        ZStack {
+                            Image(systemName: "book.fill")
+                                .font(.system(size: 16, weight: .bold))
+                                .foregroundColor(.red)
+                        }
+                        
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("Redbook")
+                                .font(.system(size: 14, weight: .semibold))
+                                .foregroundColor(.black)
+                        }
+                        
+                    }
+                }
+                .buttonStyle(PlainButtonStyle())
+                .frame(maxWidth: .infinity)
+                .padding(16)
+                .background(.white)
+                
+                // Feedback 链接
+                Button(action: {
+                    if let url = URL(string: "http://xhslink.com/m/Z4hb0TqYb4") {
+                        UIApplication.shared.open(url)
+                    }
+                }) {
+                    HStack(spacing: 12) {
+                        ZStack {
+                            Image(systemName: "message.fill")
+                                .font(.system(size: 16, weight: .bold))
+                                .foregroundColor(.blue)
+                        }
+                        
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("Feedback")
+                                .font(.system(size: 14, weight: .semibold))
+                                .foregroundColor(.black)
+                        }
+                    }
+                }
+                .buttonStyle(PlainButtonStyle())
+                .frame(maxWidth: .infinity)
+                .padding(16)
+                .background(.white)
+            }
+            .overlay(
+                Rectangle()
+                    .stroke(.black, lineWidth: 1)
+            )
+        }
+    }
+    
+    private var futurePlansSection: some View {
+        VStack(spacing: 16) {
+            // 标题
+            HStack {
+                Text("后续计划")
+                    .font(.system(size: 14, weight: .light))
+                    .foregroundColor(.black)
+                Spacer()
+            }
+            
+            VStack(spacing: 12) {
+                // 计划项目列表
+                planItem(
+                    icon: "star.fill",
+                    iconColor: .purple,
+                    title: "增加自定义角色功能",
+                    number: "1"
+                )
+                
+                planItem(
+                    icon: "crown.fill", 
+                    iconColor: .yellow,
+                    title: "增加一些会员限定角色",
+                    number: "2"
+                )
+                
+                planItem(
+                    icon: "xmark.circle.fill",
+                    iconColor: .orange,
+                    title: "增加忌口功能",
+                    number: "3"
+                )
+                
+                planItem(
+                    icon: "basket.fill",
+                    iconColor: .green,
+                    title: "增加调料柜功能", 
+                    number: "4"
+                )
+                
+                planItem(
+                    icon: "basket.fill",
+                    iconColor: .green,
+                    title: "推出点心烘焙版本",
+                    number: "5"
+                )
+                
+                planItem(
+                    icon: "basket.fill",
+                    iconColor: .green,
+                    title: "增加减脂餐功能",
+                    number: "6"
+                )
+            }
+            .padding(20)
+            .background(.white)
+            .overlay(
+                Rectangle()
+                    .stroke(.black, lineWidth: 1)
+            )
+        }
+    }
+    
+    private func planItem(icon: String, iconColor: Color, title: String, number: String) -> some View {
+        HStack(spacing: 12) {
+            // 序号
+            Text(number)
+                .font(.system(size: 14, weight: .bold))
+                .foregroundColor(.black)
+                .frame(width: 24, height: 24)
+                .background(Color.white)
+                .overlay(
+                    Rectangle()
+                        .stroke(.black, lineWidth: 1)
+                )
+            
+            
+            // 标题
+            Text(title)
+                .font(.system(size: 14, weight: .medium))
+                .foregroundColor(.black)
+            
+            Spacer()
+        }
+        
     }
     
     private func settingCard(icon: String, iconColor: Color, title: String, subtitle: String, value: String) -> some View {
@@ -480,7 +632,6 @@ struct SettingsView: View {
 struct PurchaseView: View {
     @Environment(\.dismiss) private var dismiss
     @ObservedObject var appState: AppState
-    @State private var selectedPurchase: PurchaseType = .premium
     @State private var isProcessing = false
     
     var body: some View {
@@ -498,18 +649,13 @@ struct PurchaseView: View {
                         // 会员特权卡片
                         featuresCard
                         
-                        // 购买选项
-                        purchaseOptions
-                        
-                        // 购买按钮
-                        subscribeButton
+                        // 购买选项和按钮合并
+                        combinedPurchaseSection
                     }
                     .padding(.horizontal, 20)
-                    .padding(.top, 20)
                     .padding(.bottom, 40)
                 }
             }
-            .navigationTitle("升级到高级版")
             .navigationBarTitleDisplayMode(.large)
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
@@ -530,7 +676,7 @@ struct PurchaseView: View {
                     .fill(Color.yellow.opacity(0))
                     .frame(width: 100, height: 100)
                 
-                Image(systemName: "crown.fill")
+                Image(systemName: "cup.and.saucer.fill")
                     .font(.system(size: 50, weight: .bold))
                     .foregroundColor(.black)
             }
@@ -560,7 +706,7 @@ struct PurchaseView: View {
             VStack(spacing: 16) {
                 featureRow(icon: "infinity", iconColor: .blue, title: "无限生成", description: "无限制生成菜品配方")
                 featureRow(icon: "crown.fill", iconColor: .yellow, title: "会员角色", description: "使用专属厨师角色")
-                featureRow(icon: "star.fill", iconColor: .purple, title: "自定义角色", description: "创建个性化厨师")
+//                featureRow(icon: "star.fill", iconColor: .purple, title: "自定义角色", description: "创建个性化厨师")
                 featureRow(icon: "heart.fill", iconColor: .red, title: "无限收藏", description: "收藏喜爱的菜品")
             }
         }
@@ -568,52 +714,87 @@ struct PurchaseView: View {
         .background(.white)
         .overlay(
             Rectangle()
-                .stroke(.black, lineWidth: 2)
+                .stroke(.black, lineWidth: 1)
         )
     }
     
-    private var purchaseOptions: some View {
-        VStack(spacing: 16) {
-            HStack {
-                Text("高级版功能")
-                    .font(.system(size: 20, weight: .bold))
-                    .foregroundColor(.black)
-                Spacer()
-            }
+    
+    private var combinedPurchaseSection: some View {
+        VStack(spacing: 20) {
             
-            VStack(spacing: 12) {
-                ForEach(PurchaseType.allCases, id: \.self) { type in
-                    modernSubscriptionOption(type: type)
+            // 价格信息
+            VStack(spacing: 8) {
+                HStack {
+                    Text("原价")
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundColor(.gray)
+                    
+                    Text("¥98")
+                        .font(.system(size: 16, weight: .medium))
+                        .foregroundColor(.gray)
+                        .strikethrough(true, color: .gray)
+                    
+                    Spacer()
+                }
+                
+                HStack {
+                    Text("早鸟价")
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundColor(.white)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 2)
+                        .background(
+                            LinearGradient(
+                                gradient: Gradient(colors: [Color.orange, Color.red]),
+                                startPoint: .leading,
+                                endPoint: .trailing
+                            )
+                        )
+                        .clipShape(RoundedRectangle(cornerRadius: 4))
+                    
+                    Text("¥39.00")
+                        .font(.system(size: 24, weight: .black))
+                        .foregroundColor(.black)
+                    
+                    Spacer()
                 }
             }
+            .padding(.horizontal, 20)
+            
+            // 购买按钮
+            Button(action: subscribe) {
+                HStack(spacing: 12) {
+                    if isProcessing {
+                        ProgressView()
+                            .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                            .scaleEffect(0.9)
+                    } else {
+                        Text("立即获取")
+                            .font(.system(size: 18, weight: .bold))
+                    }
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 16)
+                .background(
+                    LinearGradient(
+                        gradient: Gradient(colors: isProcessing ? [Color.gray, Color.gray] : [Color.black, Color.gray.opacity(0.7)]),
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
+                .foregroundColor(.white)
+            }
+            .disabled(isProcessing)
+            .buttonStyle(ScaleButtonStyle())
         }
+        .padding(24)
+        .background(.white)
+        .overlay(
+            Rectangle()
+                .stroke(.black, lineWidth: 1)
+        )
     }
     
-    private var subscribeButton: some View {
-        Button(action: subscribe) {
-            HStack(spacing: 12) {
-                if isProcessing {
-                    ProgressView()
-                        .progressViewStyle(CircularProgressViewStyle(tint: .white))
-                        .scaleEffect(0.9)
-                } else {
-                    Image(systemName: "star.fill")
-                    Text("立即购买")
-                        .font(.system(size: 18, weight: .bold))
-                }
-            }
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 16)
-            .background(isProcessing ? Color.gray : .black)
-            .foregroundColor(.white)
-            .overlay(
-                Rectangle()
-                    .stroke(.black, lineWidth: 2)
-            )
-        }
-        .disabled(isProcessing)
-        .buttonStyle(ScaleButtonStyle())
-    }
     
     private func featureRow(icon: String, iconColor: Color, title: String, description: String) -> some View {
         HStack(spacing: 16) {
@@ -641,71 +822,6 @@ struct PurchaseView: View {
         }
     }
     
-    private func modernSubscriptionOption(type: PurchaseType) -> some View {
-        Button(action: { selectedPurchase = type }) {
-            HStack(spacing: 16) {
-                VStack(alignment: .leading, spacing: 8) {
-                    HStack(spacing: 8) {
-                        Text(type.rawValue)
-                            .font(.system(size: 18, weight: .bold))
-                            .foregroundColor(.black)
-                        
-                        Text("一次性购买")
-                            .font(.system(size: 12, weight: .medium))
-                            .foregroundColor(.white)
-                            .padding(.horizontal, 8)
-                            .padding(.vertical, 2)
-                            .background(.green)
-                    }
-                    
-                    Text("¥\(String(format: "%.2f", type.price))")
-                        .font(.system(size: 24, weight: .black))
-                        .foregroundColor(.black)
-                    
-                    Text(type.features)
-                        .font(.system(size: 12, weight: .medium))
-                        .foregroundColor(.green)
-                }
-                
-                Spacer()
-                
-                ZStack {
-                    Circle()
-                        .fill(selectedPurchase == type ? Color.blue : Color.clear)
-                        .frame(width: 24, height: 24)
-                        .overlay(
-                            Circle()
-                                .stroke(.black, lineWidth: 2)
-                        )
-                    
-                    if selectedPurchase == type {
-                        Image(systemName: "checkmark")
-                            .font(.system(size: 12, weight: .bold))
-                            .foregroundColor(.white)
-                    }
-                }
-            }
-            .padding(20)
-            .background(
-                selectedPurchase == type ? 
-                LinearGradient(
-                    gradient: Gradient(colors: [Color.blue.opacity(0.1), Color.purple.opacity(0.1)]),
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                ) : LinearGradient(
-                    gradient: Gradient(colors: [Color.white, Color.white]),
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                )
-            )
-            .overlay(
-                Rectangle()
-                    .stroke(.black, lineWidth: 2)
-            )
-            
-        }
-        .buttonStyle(PlainButtonStyle())
-    }
     
     private func subscribe() {
         purchase()
@@ -716,7 +832,7 @@ struct PurchaseView: View {
         
         // 模拟购买处理
         DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
-            appState.purchase(selectedPurchase)
+            appState.purchase(.premium)
             isProcessing = false
             dismiss()
         }

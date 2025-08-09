@@ -557,6 +557,13 @@ struct ChefCardView: View {
         // 显示礼花效果
         showConfetti = true
         
+        // 触发震动反馈
+        #if os(iOS)
+        let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
+        impactFeedback.prepare()
+        impactFeedback.impactOccurred()
+        #endif
+        
         // 2秒后恢复庆祝动画（使用主队列异步执行）
         DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
             // 隐藏庆祝动画

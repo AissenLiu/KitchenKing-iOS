@@ -14,7 +14,7 @@
 1. 在刚添加的 iCloud 功能中
 2. 点击 "Containers" 右侧的 "+" 按钮
 3. 选择 "Use Custom Container"
-4. 输入容器标识符: `iCloud.com.kitchenking.favorites`
+4. 输入容器标识符: `iCloud.com.kitchenking`
 5. 点击 "OK"
 
 ### 3. 添加权限文件

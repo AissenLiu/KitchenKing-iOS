@@ -16,8 +16,6 @@ struct FavoritesView: View {
     @Environment(\.dismiss) private var dismiss
     // 状态属性：存储用户选择的菜品
     @State private var selectedDish: Dish?
-    // 状态属性：控制是否显示详情页面
-    @State private var showingDetail = false
     // 状态属性：用于强制刷新视图
     @State private var refreshTrigger = false
     // 计算属性：定义视图的主体内容
@@ -48,10 +46,9 @@ struct FavoritesView: View {
                                     // 创建收藏菜品卡片视图
                                     FavoriteDishCard(
                                         dish: dish,
-                                        // 点击回调：设置选中的菜品并显示详情
+                                        // 点击回调：设置选中的菜品（自动触发详情页面显示）
                                         onTap: {
                                             selectedDish = dish
-                                            showingDetail = true
                                         },
                                         // 删除回调：从收藏中移除菜品
                                         onRemove: {
@@ -68,6 +65,7 @@ struct FavoritesView: View {
                     }
                 }
             }
+            .navigationBarBackButtonHidden(true)
             // 设置导航栏标题
             .navigationTitle("喜欢的菜")
             .navigationBarTitleDisplayMode(.large)
@@ -81,19 +79,16 @@ struct FavoritesView: View {
                 }
             }
             // 添加模态页面，显示菜品详情
-            .sheet(isPresented: $showingDetail) {
-                // 条件绑定：确保有选中的菜品
-                if let dish = selectedDish {
-                    // 显示菜品详情视图，现代风格，隐藏收藏按钮
-                    DishDetailView.modern(
-                        dish: dish,
-                        onClose: {
-                            // 关闭回调：隐藏详情页面
-                            showingDetail = false
-                        },
-                        showFavoriteButton: false
-                    )
-                }
+            .sheet(item: $selectedDish) { dish in
+                // 直接使用选中的菜品显示详情视图
+                DishDetailView.modern(
+                    dish: dish,
+                    onClose: {
+                        // 关闭回调：清空选中的菜品
+                        selectedDish = nil
+                    },
+                    showFavoriteButton: false
+                )
             }
             .onAppear {
                 // 强制刷新收藏数据，解决第一次显示时的状态同步问题
@@ -102,6 +97,7 @@ struct FavoritesView: View {
                 appState.loadFavorites()
             }
         }
+        .navigationBarBackButtonHidden(true)
     }
     
     // 头部统计信息视图

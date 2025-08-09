@@ -217,7 +217,8 @@ class APIService: ObservableObject {
         }
         
         let allergies = appState.hasAllergies ? appState.allergiesContent : nil
-        let tasks = appState.cuisines.map { cuisine in
+        let availableCuisines = appState.getAvailableCuisines()
+        let tasks = availableCuisines.map { cuisine in
             Task {
                 let result = await callChef(ingredients: ingredients, cuisine: cuisine.name, apiKey: apiKey, allergies: allergies)
                 

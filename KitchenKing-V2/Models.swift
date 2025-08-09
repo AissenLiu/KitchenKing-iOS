@@ -29,7 +29,7 @@ enum PurchaseType: String, CaseIterable, Codable {
     var features: String {
         switch self {
         case .premium:
-            return "无限生成·会员角色·无限收藏·自定义角色"
+            return "无限生成·解锁全部菜系·会员角色·无限收藏·自定义角色"
         }
     }
 }
@@ -170,13 +170,35 @@ struct FlavorProfile: Codable {
 }
 
 struct Dish: Identifiable, Codable {
-    let id = UUID()
+    let id: UUID
     let dishName: String
     let ingredients: Ingredients
     let steps: [CookingStep]
     let tips: [String]
     let flavorProfile: FlavorProfile
     let disclaimer: String?
+    
+    // 默认初始化器（生成新的UUID）
+    init(dishName: String, ingredients: Ingredients, steps: [CookingStep], tips: [String], flavorProfile: FlavorProfile, disclaimer: String? = nil) {
+        self.id = UUID()
+        self.dishName = dishName
+        self.ingredients = ingredients
+        self.steps = steps
+        self.tips = tips
+        self.flavorProfile = flavorProfile
+        self.disclaimer = disclaimer
+    }
+    
+    // 自定义初始化器（使用指定的UUID）
+    init(id: UUID, dishName: String, ingredients: Ingredients, steps: [CookingStep], tips: [String], flavorProfile: FlavorProfile, disclaimer: String? = nil) {
+        self.id = id
+        self.dishName = dishName
+        self.ingredients = ingredients
+        self.steps = steps
+        self.tips = tips
+        self.flavorProfile = flavorProfile
+        self.disclaimer = disclaimer
+    }
     
     struct Ingredients: Codable {
         let main: [String]
@@ -185,8 +207,29 @@ struct Dish: Identifiable, Codable {
     }
     
     enum CodingKeys: String, CodingKey {
+        case id
         case dishName = "dish_name"
         case ingredients, steps, tips, flavorProfile = "flavor_profile", disclaimer
+    }
+    
+    // 自定义解码器 - 处理向后兼容性
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        
+        // 如果存在 id 字段就使用，否则生成新的 UUID
+        if let existingId = try? container.decode(UUID.self, forKey: .id) {
+            self.id = existingId
+        } else {
+            self.id = UUID()
+            print("⚠️ 旧数据格式，生成新的 ID: \(self.id)")
+        }
+        
+        self.dishName = try container.decode(String.self, forKey: .dishName)
+        self.ingredients = try container.decode(Ingredients.self, forKey: .ingredients)
+        self.steps = try container.decode([CookingStep].self, forKey: .steps)
+        self.tips = try container.decode([String].self, forKey: .tips)
+        self.flavorProfile = try container.decode(FlavorProfile.self, forKey: .flavorProfile)
+        self.disclaimer = try container.decodeIfPresent(String.self, forKey: .disclaimer)
     }
 }
 
@@ -463,7 +506,8 @@ class AppState: ObservableObject {
     
     // 初始化厨师
     func initializeChefs() {
-        chefs = cuisines.map { cuisine in
+        let availableCuisines = getAvailableCuisines()
+        chefs = availableCuisines.map { cuisine in
             Chef(
                 name: cuisine.chefName,
                 cuisine: cuisine.name,
@@ -505,6 +549,19 @@ class AppState: ObservableObject {
     // 获取随机炒菜步骤
     func getRandomCookingStep() -> String {
         return cookingSteps.randomElement() ?? "正在制作..."
+    }
+    
+    // 获取当前用户可用的菜系
+    func getAvailableCuisines() -> [Cuisine] {
+        if isPurchased {
+            // 高级版用户可以使用所有菜系
+            return cuisines
+        } else {
+            // 免费用户只能使用湘菜、川菜、粤菜
+            return cuisines.filter { cuisine in
+                ["湘菜", "川菜", "粤菜"].contains(cuisine.name)
+            }
+        }
     }
     
     // 检查是否所有厨师都完成了制作
@@ -632,14 +689,88 @@ class AppState: ObservableObject {
     // 本地加载（作为备份）
     func loadFavorites() {
         guard let data = UserDefaults.standard.data(forKey: favoritesKey) else {
+            print("📭 没有本地收藏数据")
             favoriteDishes = []
             return
         }
         
         do {
-            favoriteDishes = try JSONDecoder().decode([Dish].self, from: data)
+            let loadedDishes = try JSONDecoder().decode([Dish].self, from: data)
+            favoriteDishes = loadedDishes
+            print("✅ 成功加载本地收藏数据: \(loadedDishes.count) 道菜")
+            
+            // 检查是否有旧数据格式需要重新保存
+            let hasNewIds = loadedDishes.allSatisfy { dish in
+                // 检查 ID 是否是新生成的（通过检查菜品名称判断）
+                return true
+            }
+            
+            if !hasNewIds {
+                print("🔄 检测到数据格式更新，重新保存...")
+                saveFavorites()
+            }
+            
+        } catch DecodingError.keyNotFound(let key, let context) {
+            print("⚠️ 数据格式不兼容，尝试数据迁移...")
+            print("缺少字段: \(key.stringValue)")
+            print("上下文: \(context)")
+            
+            // 尝试迁移旧数据格式
+            migrateOldFavoritesData(data)
+            
         } catch {
             print("❌ 加载收藏数据失败: \(error)")
+            
+            // 创建备份并清空数据
+            let backupKey = "\(favoritesKey)_backup_\(Int(Date().timeIntervalSince1970))"
+            UserDefaults.standard.set(data, forKey: backupKey)
+            print("📦 已备份损坏的数据到: \(backupKey)")
+            
+            favoriteDishes = []
+        }
+    }
+    
+    // 迁移旧数据格式
+    private func migrateOldFavoritesData(_ data: Data) {
+        // 创建一个临时的旧数据结构
+        struct OldDish: Codable {
+            let dishName: String
+            let ingredients: Dish.Ingredients
+            let steps: [CookingStep]
+            let tips: [String]
+            let flavorProfile: FlavorProfile
+            let disclaimer: String?
+            
+            enum CodingKeys: String, CodingKey {
+                case dishName = "dish_name"
+                case ingredients, steps, tips, flavorProfile = "flavor_profile", disclaimer
+            }
+        }
+        
+        do {
+            let oldDishes = try JSONDecoder().decode([OldDish].self, from: data)
+            print("📦 找到 \(oldDishes.count) 道旧格式菜品，开始迁移...")
+            
+            // 转换为新格式
+            favoriteDishes = oldDishes.map { oldDish in
+                let newDish = Dish(
+                    dishName: oldDish.dishName,
+                    ingredients: oldDish.ingredients,
+                    steps: oldDish.steps,
+                    tips: oldDish.tips,
+                    flavorProfile: oldDish.flavorProfile,
+                    disclaimer: oldDish.disclaimer
+                )
+                print("✅ 迁移菜品: \(newDish.dishName) -> ID: \(newDish.id)")
+                return newDish
+            }
+            
+            // 保存迁移后的数据
+            saveFavorites()
+            print("🎉 数据迁移完成！共迁移 \(favoriteDishes.count) 道菜品")
+            
+        } catch {
+            print("❌ 数据迁移失败: \(error)")
             favoriteDishes = []
         }
     }
@@ -701,6 +832,33 @@ class AppState: ObservableObject {
         
         if isCloudSyncEnabled {
             setupCloudKitSync()
+        }
+    }
+    
+    // 清除所有收藏数据（用于调试和重置）
+    func clearAllFavorites() {
+        favoriteDishes = []
+        UserDefaults.standard.removeObject(forKey: favoritesKey)
+        
+        // 清除所有备份数据
+        let backupKeys = UserDefaults.standard.dictionaryRepresentation().keys.filter { $0.hasPrefix("\(favoritesKey)_backup_") }
+        for key in backupKeys {
+            UserDefaults.standard.removeObject(forKey: key)
+        }
+        
+        print("🗑️ 已清除所有本地收藏数据和备份")
+        
+        // 如果启用了 iCloud 同步，也清除云端数据
+        if isCloudSyncEnabled {
+            Task {
+                let cloudDishes = await cloudKitManager.fetchFavoriteDishes()
+                if !cloudDishes.isEmpty {
+                    let success = await cloudKitManager.deleteFavoriteDishes(cloudDishes)
+                    if success {
+                        print("🗑️ 已清除所有 iCloud 收藏数据")
+                    }
+                }
+            }
         }
     }
     
